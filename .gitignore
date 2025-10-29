@@ -1,0 +1,5 @@
+.old.zip
+DATASET/*
+ORIGINAL_DATA/*
+__pycache__/
+script/__pycache__/*
