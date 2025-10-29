@@ -75,7 +75,7 @@ The dataset covers 54 labeled areas across 7 glacier surface classes in the Mont
 
 ### Acquisition Timeline
 
-![Enhanced Acquisition Timeline](figure/enhanced_acquisition_timeline.pdf)
+![Enhanced Acquisition Timeline](figure/enhanced_acquisition_timeline.png)
 
 ### Data Characteristics
 
