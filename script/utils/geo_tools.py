@@ -45,7 +45,13 @@ def load_data(file_name, gdal_driver="GTiff"):
     channel = inDs.RasterCount
     image_array = np.zeros((rows, cols, channel), dtype=np.float32)
     for i in range(channel):
-        data_array = inDs.GetRasterBand(i + 1).ReadAsArray(0, 0, cols, rows)
+        band = inDs.GetRasterBand(i + 1)
+        data_array = band.ReadAsArray(0, 0, cols, rows)
+        # Obtenir la valeur nodata de la bande
+        nodata = band.GetNoDataValue()
+        if nodata is not None:
+            # Remplacer les valeurs nodata par NaN
+            data_array = np.where(data_array == nodata, np.nan, data_array)
         image_array[:, :, i] = data_array
     inDs = None
     return image_array, (geotransform, projection)
@@ -201,13 +207,13 @@ def stats_dataset(path, dico):
 
 
 def gdal_clip_shp_raster(inraster, inshape, outraster, country_name):
-    subprocess.call(
+    result = subprocess.run(
         [
             "gdalwarp",
             "-of",
-            "Gtiff",
+            "GTiff",
             "-dstnodata",
-            "value -999",
+            "-999",
             "-ot",
             "Float32",
             inraster,
@@ -218,9 +224,17 @@ def gdal_clip_shp_raster(inraster, inshape, outraster, country_name):
             "-cwhere",
             f"id='{country_name}'",
         ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
     )
+    
+    # Afficher les erreurs si la commande échoue
+    if result.returncode != 0:
+        print(f"Erreur gdalwarp pour {outraster}:")
+        print(f"  stderr: {result.stderr}")
+    
+    return result.returncode
 
 
 def gdal_merge_rasters(in_R1, in_R2, outraster):
