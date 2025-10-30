@@ -210,6 +210,7 @@ def gdal_clip_shp_raster(inraster, inshape, outraster, country_name):
     result = subprocess.run(
         [
             "gdalwarp",
+            "-overwrite",  # Permet d'écraser les fichiers existants
             "-of",
             "GTiff",
             "-dstnodata",
