@@ -17,11 +17,14 @@ def extract_acquisition_key(filename):
     Clé = (satellite, date, heure, type_acq) sans les minutes
     """
     basename = os.path.basename(filename)
-    # Exemple: subset_20_of_TDX1_SAR_SSC_SM_S_SRA_20131114T172538_20131114T172543_Cal_TF_TC.tif
-    # On cherche: satellite (TDX1/TSX1), date (YYYYMMDD), heure (HH) du début
-    match = re.search(r"([TP]DX\d).*?(\d{8})T(\d{2})\d{4}_\d{8}T\d{6}", basename)
+    # Exemples: 
+    # - subset_20_of_TDX1_SAR_SSC_SM_S_SRA_20131114T172538_20131114T172543_Cal_TF_TC.tif
+    # - subset_0_of_PAZ1_SAR__SSC______SM_S_SRA_20211122T172529_20211122T172536_Cal_Tf_Tc_TC.tif
+    # - subset_0_of_TSX1_SAR_SSC_SM_S_SRA_20091010T172514_20091010T172522_Cal_TF_TC.tif
+    # On cherche: satellite (TDX1/TSX1/PAZ1), date (YYYYMMDD), heure (HH) du début
+    match = re.search(r"([TP][DASX][ZX]\d).*?(\d{8})T(\d{2})\d{4}_\d{8}T\d{6}", basename)
     if match:
-        satellite = match.group(1)  # TDX1 ou TSX1
+        satellite = match.group(1)  # TDX1, TSX1 ou PAZ1
         date = match.group(2)       # 20131114
         hour = match.group(3)       # 17
         return (satellite, date, hour)
@@ -168,16 +171,25 @@ def merge_similar_acquisitions(files, temp_dir):
     Fusionne les images qui correspondent à la même acquisition (même satellite, date, heure).
     Retourne la liste des fichiers fusionnés (ou originaux si pas de merge nécessaire).
     """
+    # Filtrer les fichiers .tif uniquement (pas les .ovr ni autres)
+    files = [f for f in files if f.lower().endswith('.tif') and not f.lower().endswith('.ovr')]
+    
     # Grouper les fichiers par clé d'acquisition
     groups = defaultdict(list)
+    files_without_key = []
+    
     for f in files:
         key = extract_acquisition_key(f)
         if key:
             groups[key].append(f)
+        else:
+            # Fichier qui ne correspond pas au pattern, on le garde tel quel
+            files_without_key.append(f)
     
     merged_files = []
     os.makedirs(temp_dir, exist_ok=True)
     
+    # Traiter les groupes identifiés
     for key, group_files in groups.items():
         if len(group_files) > 1:
             # Plusieurs fichiers pour la même acquisition -> merge intelligent
@@ -198,6 +210,12 @@ def merge_similar_acquisitions(files, temp_dir):
         else:
             # Un seul fichier pour cette acquisition
             merged_files.append(group_files[0])
+    
+    # Ajouter les fichiers sans clé
+    merged_files.extend(files_without_key)
+    
+    if files_without_key:
+        print(f"Note: {len(files_without_key)} fichiers n'ont pas pu être analysés (format non standard), ils seront traités tels quels")
     
     return merged_files
 
@@ -263,7 +281,6 @@ def split_channel(temp):
             img[:, :, [1, -1]], meta, os.path.join(os.path.dirname(temp), name_1)
         )
         os.remove(temp)
-        os.remove(temp)
 
 
 if __name__ == "__main__":
@@ -301,6 +318,7 @@ if __name__ == "__main__":
 files_proc = glob.glob(f"{output}**/*.tif", recursive=True)
 for temp in tqdm.tqdm(files_proc):
     split_channel(temp)
+os.rmdir(temp_merge_dir)
 # Erreur pour l'instant propablement du au Parallel
 # Parallel(n_jobs=-1)(
 #     delayed(split_channel)(temp) for temp in tqdm.tqdm(files_proc)
