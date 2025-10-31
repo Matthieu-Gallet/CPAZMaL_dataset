@@ -13,6 +13,8 @@ IMPORTANT: Filtrage sur mask == 0 strictement pour extraire les données valides
 
 import os
 import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from load_dataset import MLDatasetLoader
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
@@ -68,6 +70,7 @@ def load_group_data(h5_file, group_name, orbit, polarization):
 def filter_data_by_mask(images, masks, mask_value=0):
     """
     Filtre les images pour ne garder que les pixels où mask == mask_value.
+    Exclut également les valeurs nodata (-999) et NaN.
     
     Args:
         images: Array (H, W, T) ou (H, W)
@@ -77,11 +80,13 @@ def filter_data_by_mask(images, masks, mask_value=0):
     Returns:
         Array 1D avec uniquement les valeurs valides
     """
-    # Créer le masque booléen: pixels valides = (mask == mask_value) ET (image != -999)
-    valid_mask = (masks == mask_value) & (images != -999.0)
+    # Créer le masque booléen: pixels valides = (mask == mask_value) 
+    # ET (image != -999) ET (image n'est pas NaN)
+    valid_mask = (masks == mask_value) & (images > 0) & np.isfinite(images)
     
     # Extraire les valeurs valides
     valid_values = images[valid_mask]
+    # print(f'Valid values count: {len(valid_values)} - Min: {np.min(valid_values) if len(valid_values)>0 else "N/A"} - Max: {np.max(valid_values) if len(valid_values)>0 else "N/A"}')
     
     return valid_values
 
@@ -132,7 +137,8 @@ def plot_hist_updated(h5_file, polarization='HH', save=True):
         'ACC': 'ACC002',
         'FOR': 'FOR002',
         'PLA': 'PLA001',
-        'ROC': 'ROC001'
+        'ROC': 'ROC001',
+        'LAC': 'LAC001'
     }
     
     orbit = 'DSC'
@@ -198,7 +204,7 @@ def plot_hist_updated(h5_file, polarization='HH', save=True):
     period_labels = ['January', 'April', 'August']
     
     # Limites selon polarisation
-    ylim_max = 0.1 if polarization == 'HH' else 0.25
+    ylim_max = 0.22 if polarization == 'HH' else 0.29
     xlim_max = 1.0
     
     class_list = list(groups.keys())
@@ -234,14 +240,17 @@ def plot_hist_updated(h5_file, polarization='HH', save=True):
         
         ax[row, col].set_xlim(0, xlim_max)
         ax[row, col].set_ylim(0, ylim_max)
+        ax[row, col].grid(True, alpha=0.3, linestyle='-')
     
-    # Légende au 8ème subplot
-    ax[1, 3].axis('off')
+    # Légende globale sous les graphes
     from matplotlib.patches import Patch
     legend_handles = [Patch(facecolor=color, edgecolor='black', label=label, alpha=0.7) 
                      for color, label in zip(colors, period_labels)]
-    ax[1, 3].legend(handles=legend_handles, loc='center', fontsize=14, frameon=True, 
-                   fancybox=True, shadow=False)
+    fig.legend(handles=legend_handles, loc='lower center', ncol=3, fontsize=14, frameon=True, 
+               fancybox=True, shadow=False, bbox_to_anchor=(0.5, -0.05))
+
+    # # Supprimer le 8ème subplot (inutile maintenant)
+    # ax[1, 3].axis('off')
     
     plt.subplots_adjust(hspace=0.22, wspace=0.1)
     
@@ -271,14 +280,20 @@ def create_temporal_plot_updated(h5_file, polarization='HH', save=True):
         'ACC': 'ACC002',
         'FOR': 'FOR002',
         'PLA': 'PLA001',
-        'ROC': 'ROC001'
+        'ROC': 'ROC001',
+        'LAC': 'LAC001'
     }
     
     orbit = 'DSC'
     
+    # Sauvegarder le backend actuel et passer en Agg pour l'affichage
+    original_backend = mpl.get_backend()
+    if save:
+        mpl.use('Agg')  # Backend non-interactif pour la sauvegarde
+    
     # Créer la figure
     l = 1.25
-    fig, ax = plt.subplots(2, 4, figsize=(17 / l, 6 / l), sharex=True, sharey=False)
+    fig, ax = plt.subplots(2, 4, figsize=(17 / l, 6 / l), sharex=True, sharey=True)
     
     class_list = list(groups.keys())
     
@@ -295,7 +310,7 @@ def create_temporal_plot_updated(h5_file, polarization='HH', save=True):
         data_dict = load_group_data(h5_file, group_name, orbit, polarization)
         
         if data_dict is None:
-            print(f"    Pas de donnees pour {group_name}")
+            print(f"    Pas de donnees pour {group_name}/{orbit}/{polarization}")
             continue
         
         images = data_dict['images']
@@ -311,42 +326,53 @@ def create_temporal_plot_updated(h5_file, polarization='HH', save=True):
         mask_paz = dates >= year_2020
         
         if not np.any(mask_paz):
+            print(f"    Pas de donnees PAZ (>=2020) pour {group_name} - dates: {dates[0]} a {dates[-1]}")
             continue
         
         dates_paz = dates[mask_paz]
         images_paz = images[:, :, mask_paz]
         masks_paz = masks[:, :, mask_paz]
         
+        
         # Calculer la moyenne temporelle pour chaque timestamp
         mean_series = []
         std_series = []
+        valid_dates = []
         
         for t in range(images_paz.shape[2]):
             img_t = images_paz[:, :, t]
             mask_t = masks_paz[:, :, t]
-            
-            # Filtrer: mask == 0 ET image != -999
+            # print(f'{np.min(img_t), np.max(img_t), np.unique(img_t) }')
+            # Filtrer: mask == 0 (pixels valides, exclut -127=nodata et classes 1,2,3)
+            # ET image != -999 (valeurs valides)
             valid_values = filter_data_by_mask(img_t, mask_t, mask_value=0)
             
             if len(valid_values) > 0:
                 mean_series.append(np.mean(valid_values))
                 std_series.append(np.std(valid_values))
-            else:
-                mean_series.append(np.nan)
-                std_series.append(np.nan)
+                valid_dates.append(dates_paz[t])
+        
+        if len(mean_series) == 0:
+            print(f"    ATTENTION: Aucune donnee valide pour {group_name}")
+            continue
         
         mean_series = np.array(mean_series)
         std_series = np.array(std_series)
+        valid_dates = np.array(valid_dates)
         
-        # Convertir en dB (10*log10)
-        mean_db = 10 * np.log10(mean_series + 1e-10)
-        std_db = 10 * np.log10(std_series + 1e-10)
+        # Convertir en dB (10*log10) avec gestion robuste des valeurs invalides
+        # Filtrer les valeurs <= 0 avant le log
+        mean_series_positive = np.where(mean_series > 0, mean_series, np.nan)
+        std_series_positive = np.where(std_series > 0, std_series, np.nan)
         
-        # Plot
-        ax[row, col].plot(dates_paz, mean_db, 'x-', 
-                         color='tab:blue', linewidth=1.5, 
-                         markersize=6, markeredgewidth=1.5)
-        ax[row, col].fill_between(dates_paz, 
+        mean_db = 10 * np.log10(mean_series_positive)
+        std_db = 10 * np.log10(std_series_positive)
+        
+        # Plot avec les données valides uniquement
+        ax[row, col].plot(valid_dates, mean_db, '+-', 
+                         color='tab:blue', linewidth=1., 
+                         markersize=4, markeredgewidth=1.5)
+        ax[row, col].fill_between(valid_dates, 
                                   mean_db - std_db, 
                                   mean_db + std_db, 
                                   alpha=0.3, color='tab:blue')
@@ -354,35 +380,49 @@ def create_temporal_plot_updated(h5_file, polarization='HH', save=True):
         # Configuration
         ax[row, col].set_title(class_name, fontsize=15, fontweight="bold")
         ax[row, col].grid(True, alpha=0.3, linestyle='--')
-        
+        if polarization == 'HH':
+            ax[row, col].set_ylim(-30, 2.5)
+        else:
+            ax[row, col].set_ylim(-35, 2.5)
         if col == 0:
             ax[row, col].set_ylabel("Amplitude (dB)", fontsize=12)
         
         if row == 1:
-            ax[row, col].tick_params(axis='x', rotation=45)
+            # ax[row, col].tick_params(axis='x', rotation=45)
+            if polarization == 'HH':
+            # Configurer les x labels pour afficher seulement 3 dates
+                ax[row, col].xaxis.set_major_locator(mdates.MonthLocator(bymonth=[6]))  # Janvier, Juillet
+                ax[row, col].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # Format: YYYY-MM
+            else:
+                ax[row, col].xaxis.set_major_locator(mdates.MonthLocator(bymonth=[3, 8 ,12]))  # Janvier, Juillet
+                ax[row, col].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # Format: YYYY-MM
         
-        n_valid = np.sum(~np.isnan(mean_db))
+        n_valid = len(mean_db)
         print(f"    {n_valid} timestamps avec donnees valides (mask==0)")
     
-    # Légende au 8ème subplot
-    ax[1, 3].axis('off')
+    # Légende globale en dessous des subplots (2 colonnes)
     from matplotlib.lines import Line2D
     from matplotlib.patches import Patch
     legend_handles = [
         Line2D([0], [0], color='tab:blue', linewidth=2, label='Mean'),
         Patch(facecolor='tab:blue', alpha=0.3, label=r'$\pm$ Std')
     ]
-    ax[1, 3].legend(handles=legend_handles, loc='center', fontsize=14, 
-                   frameon=True, fancybox=True, shadow=False)
-    
-    plt.subplots_adjust(hspace=0.35, wspace=0.25)
+    fig.legend(handles=legend_handles, loc='lower center', ncol=2, fontsize=12,
+               frameon=True, fancybox=True, shadow=False, bbox_to_anchor=(0.5, 0.015))
+
+    # Ajuster l'espacement pour laisser de la place à la légende
+    plt.subplots_adjust(hspace=0.25, wspace=0.15, bottom=0.15)
     
     if save:
         os.makedirs("figure/updated", exist_ok=True)
+        # Sauvegarder avec le backend PGF
         filename = f"figure/updated/temporal_DSC_{polarization}.pdf"
         plt.savefig(filename, dpi=300, bbox_inches="tight", backend="pgf")
         print(f"  Figure sauvegardee: {filename}")
         plt.close(fig)
+        
+        # Restaurer le backend original
+        mpl.use(original_backend)
     else:
         plt.show()
 
@@ -408,7 +448,7 @@ def create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=Tru
     
     # Créer la figure
     l = 1.25
-    fig, ax = plt.subplots(1, 4, figsize=(17 / l, 4 / l), sharex=True, sharey=True)
+    fig, ax = plt.subplots(1, 4, figsize=(17 / l, 3.5 / l), sharex=True, sharey=True)
     
     colors = {
         'DSC': 'tab:blue',
@@ -469,42 +509,47 @@ def create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=Tru
             mean_db = 10 * np.log10(mean_series + 1e-10)
             
             # Plot
-            ax[cl].plot(dates_paz, mean_db, 'x-', 
-                       color=colors[orbit], linewidth=1.5, 
+            ax[cl].plot(dates_paz, mean_db, '+-', 
+                       color=colors[orbit], linewidth=1, 
                        markersize=6, markeredgewidth=1.5,
                        label=orbit)
-            
             n_valid = np.sum(~np.isnan(mean_db))
             print(f"    {orbit}: {n_valid} timestamps valides (mask==0)")
         
         # Configuration
         ax[cl].set_title(group_name, fontsize=12, fontweight="bold")
         ax[cl].grid(True, alpha=0.3, linestyle='--')
+        # ax[cl].legend(fontsize=10)  # Removed individual legends
+        if polarization == 'HH':
+            ax[cl].set_ylim(-20, 2.5)
+        else:
+            ax[cl].set_ylim(-25,-2.5)
         
         if cl == 0:
             ax[cl].set_ylabel("Amplitude (dB)", fontsize=12)
             ax[cl].tick_params(axis='y', rotation=0)
         
         # Format dates - afficher uniquement janvier
-        ax[cl].xaxis.set_major_locator(mdates.YearLocator())
-        ax[cl].xaxis.set_major_formatter(mdates.DateFormatter('%Y-01'))
-        ax[cl].tick_params(axis='x', rotation=0, labelsize=9)
+        if polarization == 'HH':
+            ax[cl].xaxis.set_major_locator(mdates.MonthLocator(bymonth=[6]))  # Juin
+            ax[cl].xaxis.set_major_formatter(mdates.DateFormatter('%Y-01'))
+            ax[cl].tick_params(axis='x', rotation=0, labelsize=9)
+        else:
+            ax[cl].xaxis.set_major_locator(mdates.MonthLocator(bymonth=[3, 8 ,12]))  # Mars, Août, Décembre
+            ax[cl].xaxis.set_major_formatter(mdates.DateFormatter('%Y-01'))
+            ax[cl].tick_params(axis='x', rotation=0, labelsize=9)
     
-    # Ajuster espacement
-    plt.subplots_adjust(hspace=0.05, wspace=0.15, bottom=0.18, top=0.95, left=0.06, right=0.98)
-    
-    # Légende globale
+    # Légende globale en dessous des subplots (2 colonnes)
     from matplotlib.lines import Line2D
     legend_handles = [
-        Line2D([0], [0], color='tab:blue', linewidth=2, marker='x', 
-               markersize=6, label='DSC', markeredgewidth=1.5),
-        Line2D([0], [0], color='tab:orange', linewidth=2, marker='x', 
-               markersize=6, label='ASC', markeredgewidth=1.5)
+        Line2D([0], [0], color='tab:blue', marker='+', linestyle='-', linewidth=1, markersize=6, markeredgewidth=1.5, label='DSC'),
+        Line2D([0], [0], color='tab:orange', marker='+', linestyle='-', linewidth=1, markersize=6, markeredgewidth=1.5, label='ASC')
     ]
-    
-    fig.legend(handles=legend_handles, loc='lower center', 
-              ncol=2, fontsize=11, frameon=True, 
-              bbox_to_anchor=(0.5, -0.03))
+    fig.legend(handles=legend_handles, loc='lower center', ncol=2, fontsize=12,
+               frameon=True, fancybox=True, shadow=False, bbox_to_anchor=(0.5, -0.015))
+
+    # Ajuster espacement
+    plt.subplots_adjust(hspace=0.05, wspace=0.1, bottom=0.2, top=0.9, left=0.06, right=0.98)
     
     if save:
         os.makedirs("figure/updated", exist_ok=True)
@@ -592,7 +637,7 @@ def find_largest_valid_rectangle(image, mask_layer=None, target_size=800, max_ma
                     else:
                         mask_pct = 0.0
                     
-                    # Accepter si moins de max_mask_pct% de mask!=0
+                    # Accepter si moins de max_mask_pct% de mask!=0 et rect_size > best_size
                     if mask_pct <= max_mask_pct and rect_size > best_size:
                         rect_data = rotated[i:i+rect_size, j:j+rect_size].copy()
                         rect_mask_data = rect_mask.copy() if mask_rotated is not None else None
@@ -673,7 +718,7 @@ def plot_sar_images_updated(h5_file, save=True):
     print(f"\nGeneration images SAR moyennes estivales 2020...")
     
     # Classes de base (FOR en 2ème ligne à la place d'ICA)
-    base_classes = ["ABL", "ACC", "HAG", "PLA", "FOR", "ROC", "ICA"]
+    base_classes = ["ABL", "ACC", "HAG", "ICA", "PLA", "FOR", "LAC", "ROC"]
     
     # Période estivale
     date_start = datetime(2020, 7, 1)
@@ -802,7 +847,7 @@ def plot_sar_images_updated(h5_file, save=True):
                 span_t = np.where((hh_t == -999.0) | (hv_t == -999.0), np.nan, span_t)
                 
                 # Accepter jusqu'à 10% de pixels avec mask != 0
-                # On les garde pour l'instant, on les remplacera après sélection du rectangle
+                # On les garde pour l'instant, on les remplacera après sélection
                 
                 span_images.append(span_t)
             
@@ -914,8 +959,8 @@ def plot_sar_images_updated(h5_file, save=True):
             all_valid_data.extend(valid)
     
     if len(all_valid_data) > 0:
-        vmin = np.percentile(all_valid_data, 1)
-        vmax = np.percentile(all_valid_data, 99)
+        vmin = np.percentile(all_valid_data, 10)
+        vmax = np.percentile(all_valid_data, 90)
     else:
         vmin, vmax = -30, 0
     
@@ -966,26 +1011,26 @@ def plot_sar_images_updated(h5_file, save=True):
             spine.set_edgecolor('black')
             spine.set_linewidth(1)
     
-    # Colorbar et légende au 8ème subplot
-    ax_cbar = axes[1, 3]
-    ax_cbar.axis('off')
-    
-    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-    from matplotlib.patches import Patch
-    
+    # Déplacer la colorbar et la légende sous les subplots
+    from matplotlib.patches import Patch, Rectangle
+
     # Colorbar pour les valeurs SPAN
-    cbar_ax = inset_axes(ax_cbar, width="20%", height="60%", loc='upper center')
-    cbar = fig.colorbar(im, cax=cbar_ax, orientation='vertical')
-    cbar.set_label('SPAN (dB)', rotation=270, labelpad=15, fontsize=9)
-    
-    # Légende pour distorsions SAR (pixels rouges)
+    cbar_ax = fig.add_axes([0.25, 0.045, 0.25, 0.03])  # [left, bottom, width, height]
+    im = axes[0, 0].images[0]  # Utiliser une image existante pour la colorbar
+    cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
+    # Supprimer le label automatique et ajouter un label à gauche
+    cbar.set_label('')  # Remove default label
+    fig.text(0.22, 0.06, 'SPAN (dB)', fontsize=10, ha='right', va='center')
+
+    # Légende pour distorsions SAR (pixels rouges) à côté de la colorbar
     legend_elements = [
         Patch(facecolor='red', edgecolor='black', label='SAR distorsion', alpha=0.7)
     ]
-    ax_cbar.legend(handles=legend_elements, loc='lower center', fontsize=9, 
-                   frameon=True, bbox_to_anchor=(0.5, 0.15))
+    fig.legend(handles=legend_elements, loc='center left', ncol=1, fontsize=10, frameon=False, bbox_to_anchor=(0.52, 0.055), bbox_transform=fig.transFigure)
+
     
-    fig.subplots_adjust(hspace=0.05, wspace=0.075, top=0.95, left=0.05, 
+    # Ajuster espacement
+    plt.subplots_adjust(hspace=0.02, wspace=0.075, top=0.95, left=0.05, 
                        right=0.95, bottom=0.05)
     
     if save:
@@ -1000,7 +1045,7 @@ def plot_sar_images_updated(h5_file, save=True):
 
 if __name__ == "__main__":
     # Nouveau dataset HDF5
-    h5_file = "DATASET/PAZTSX_CRYO_ML.hdf5"
+    h5_file = "../../DATASET/PAZTSX_CRYO_ML.hdf5"
     
     print("="*60)
     print("GENERATION DES FIGURES AVEC NOUVEAU DATASET")
@@ -1019,18 +1064,18 @@ if __name__ == "__main__":
     # Générer toutes les figures
     
     # Figure 1: Histogrammes (3 périodes, DSC uniquement)
-    print("\n" + "="*60)
-    print("FIGURE 1: HISTOGRAMMES")
-    print("="*60)
-    plot_hist_updated(h5_file, polarization='HH', save=True)
-    plot_hist_updated(h5_file, polarization='HV', save=True)
+    # print("\n" + "="*60)
+    # print("FIGURE 1: HISTOGRAMMES")
+    # print("="*60)
+    # plot_hist_updated(h5_file, polarization='HH', save=True)
+    # plot_hist_updated(h5_file, polarization='HV', save=True)
     
-    # Figure 2: Plots temporels simples (DSC uniquement)
-    print("\n" + "="*60)
-    print("FIGURE 2: PLOTS TEMPORELS DSC")
-    print("="*60)
-    create_temporal_plot_updated(h5_file, polarization='HH', save=True)
-    create_temporal_plot_updated(h5_file, polarization='HV', save=True)
+    # # Figure 2: Plots temporels simples (DSC uniquement)
+    # print("\n" + "="*60)
+    # print("FIGURE 2: PLOTS TEMPORELS DSC")
+    # print("="*60)
+    # create_temporal_plot_updated(h5_file, polarization='HH', save=True)
+    # create_temporal_plot_updated(h5_file, polarization='HV', save=True)
     
     # Figure 3: Plots temporels dual-orbit (DSC + ASC)
     print("\n" + "="*60)
@@ -1039,11 +1084,11 @@ if __name__ == "__main__":
     create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=True)
     create_temporal_plot_dual_orbit_updated(h5_file, polarization='HV', save=True)
     
-    # Figure 4: Images SAR moyennes estivales
-    print("\n" + "="*60)
-    print("FIGURE 4: IMAGES SAR MOYENNES")
-    print("="*60)
-    plot_sar_images_updated(h5_file, save=True)
+    # # Figure 4: Images SAR moyennes estivales
+    # print("\n" + "="*60)
+    # print("FIGURE 4: IMAGES SAR MOYENNES")
+    # print("="*60)
+    # plot_sar_images_updated(h5_file, save=True)
     
     print("\n" + "="*60)
     print("TOUTES LES FIGURES GENEREES!")

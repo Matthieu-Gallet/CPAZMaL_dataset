@@ -10,7 +10,7 @@ def create_latex_table_from_csv():
     """Crée un tableau LaTeX à partir du fichier details_shp.csv"""
     
     # Lire le fichier CSV
-    df = pd.read_csv("METADATA/details_shp.csv")
+    df = pd.read_csv("../../ORIGINAL_DATA/metadata/shapefile_statistics.csv")
     
     # Grouper par classe pour avoir des statistiques par classe
     grouped = df.groupby('classe').agg({
@@ -61,7 +61,7 @@ def create_latex_table_from_csv():
 """
     
     # Sauvegarder le tableau
-    with open("figure/study_areas_table.tex", "w") as f:
+    with open("../../figure/study_areas_table.tex", "w") as f:
         f.write(latex_table)
     
     print("Tableau LaTeX sauvegardé: figure/study_areas_table.tex")
@@ -93,7 +93,7 @@ def create_latex_table_from_csv():
 """
     
     # Sauvegarder le tableau détaillé
-    with open("figure/detailed_study_areas_table.tex", "w") as f:
+    with open("../../figure/detailed_study_areas_table.tex", "w") as f:
         f.write(detailed_table)
     
     print("Tableau détaillé sauvegardé: figure/detailed_study_areas_table.tex")
@@ -129,24 +129,5 @@ def create_latex_table_from_csv():
 \end{table}
 """
     
-    with open("figure/study_areas_stats.tex", "w") as f:
-        f.write(stats_table)
-    
-    print("Tableau statistiques sauvegardé: figure/study_areas_stats.tex")
-    
-    # Afficher un résumé
-    print("\n=== Résumé des données ===")
-    print(f"Nombre total de zones: {len(df)}")
-    print(f"Nombre de classes: {df['classe'].nunique()}")
-    print(f"Classes: {sorted(df['classe'].unique())}")
-    print(f"Nombre de groupes: {df['group'].nunique()}")
-    
-    print("\n=== Statistiques par classe ===")
-    for classe in sorted(df['classe'].unique()):
-        classe_data = df[df['classe'] == classe]
-        print(f"{classe}: {len(classe_data)} zones, "
-              f"altitude moyenne: {classe_data['altitude'].mean():.0f}m, "
-              f"pente moyenne: {classe_data['pente'].mean():.1f}°")
-
 if __name__ == "__main__":
     create_latex_table_from_csv()

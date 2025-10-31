@@ -59,19 +59,21 @@ Output: `DATASET/PAZTSX_CRYO_ML.hdf5` (optimized for ML with chunking, compressi
 
 ### Study Areas
 
-The dataset covers 54 labeled areas across 7 glacier surface classes in the Mont-Blanc massif:
+The dataset covers 70 labeled areas across 9 land surface classes in the Mont-Blanc massif:
 
 | Class | N  | Altitude (m)     | Slope (°)        | Aspect (°)       | Lat    | Lon   |
 |-------|----|------------------|------------------|------------------|--------|-------|
-| ABL   | 7  | 2566 ± 220       | 17.5 ± 4.7       | 280 ± 49         | 45.926 | 6.962 |
-| ACC   | 9  | 3076 ± 405       | 26.1 ± 9.5       | 218 ± 88         | 45.916 | 6.968 |
-| FOR   | 6  | 1547 ± 308       | 30.9 ± 9.1       | 254 ± 95         | 45.830 | 6.961 |
-| HAG   | 7  | 3220 ± 196       | 46.5 ± 9.5       | 254 ± 117        | 45.891 | 6.928 |
-| ICA   | 9  | 3379 ± 300       | 43.1 ± 14.0      | 288 ± 60         | 45.920 | 6.966 |
-| PLA   | 7  | 1950 ± 354       | 16.1 ± 6.3       | 245 ± 56         | 45.940 | 6.948 |
-| ROC   | 7  | 2557 ± 538       | 30.6 ± 16.7      | 154 ± 97         | 45.948 | 6.913 |
+| ABL   | 7  | 2577 ± 206       | 17.1 ± 5.2       | 268 ± 47         | 45.926 | 6.962 |
+| ACC   | 9  | 3077 ± 402       | 26.1 ± 10.2      | 220 ± 71         | 45.916 | 6.968 |
+| FOR   | 9  | 1436 ± 194       | 24.4 ± 9.3       | 283 ± 56         | 45.971 | 6.907 |
+| HAG   | 7  | 3203 ± 184       | 47.2 ± 8.5       | 232 ± 119        | 45.891 | 6.928 |
+| ICA   | 9  | 3353 ± 295       | 43.5 ± 12.0      | 270 ± 90         | 45.920 | 6.966 |
+| LAC   | 9  | 1865 ± 616       | 8.5 ± 6.2        | 179 ± 46         | 45.965 | 6.886 |
+| PLA   | 9  | 1834 ± 296       | 18.9 ± 7.5       | 223 ± 74         | 45.982 | 6.908 |
+| ROC   | 9  | 2333 ± 206       | 26.6 ± 5.5       | 236 ± 74         | 45.947 | 6.908 |
+| STUDY | 2  | 2739 ± 54        | 21.3 ± 14.2      | 272 ± 21         | 45.922 | 6.960 |
 
-**Classes:** ABL (Ablation zone), ACC (Accumulation zone), FOR (Forefield), HAG (Hummocky ablation glacier), ICA (Ice/snow avalanche cone), PLA (Plateau glacier), ROC (Rockfall)
+**Classes:** ABL (Ablation zone), ACC (Accumulation zone), FOR (Forefield), HAG (Hummocky ablation glacier), ICA (Ice/snow avalanche cone), LAC (Lake), PLA (Plateau glacier), ROC (Rockfall), STUDY (Study area)
 
 ### Acquisition Timeline
 
@@ -208,8 +210,8 @@ data = scenario_2_temporal_prediction_lstm(
 )
 
 # Returns:
-# - X_train: (N,) array of (window_size, window_size, T_train)
-# - X_predict: (N,) array of (window_size, window_size, T_predict)
+# - X_train: (N) array of (window_size, window_size, T_train)
+# - X_predict: (N) array of (window_size, window_size, T_predict)
 # - timestamps_train, timestamps_predict
 ```
 
