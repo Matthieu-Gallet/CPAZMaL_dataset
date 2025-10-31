@@ -1,23 +1,31 @@
 #!/usr/bin/env python3
 """
-Script optimisé pour créer un dataset HDF5 structuré pour le Machine Learning.
+Optimized script to create a structured HDF5 dataset for Machine Learning.
 
-Améliorations par rapport à 2_create_dataset.py:
-1. Structure HDF5 optimisée avec index pour accès rapide
-2. Métadonnées enrichies (satellite, résolution, angle d'incidence)
-3. Organisation par satellite et période temporelle
-4. Chunking et compression optimisés pour ML
-5. Attributs de normalisation pré-calculés
-6. Index temporels pour extraction rapide de séquences
+Improvements compared to 2_create_dataset.py:
+1. Optimized HDF5 structure with indexes for fast access
+2. Enriched metadata (satellite, resolution, incidence angle)
+3. Organization by satellite and time period
+4. Chunking and compression optimized for ML
+5. Pre-calculated normalization attributes
+6. Temporal indexes for fast sequence extraction
 """
 
-# Configuration GDAL pour éviter les warnings
+# GDAL configuration to avoid warnings and PROJ errors
 import os
 os.environ['GDAL_PAM_ENABLED'] = 'NO'
 
+# Force the use of pyproj's PROJ database (more recent)
+import sys
+import pyproj
+proj_data_dir = pyproj.datadir.get_data_dir()
+os.environ['PROJ_DATA'] = proj_data_dir
+os.environ['PROJ_LIB'] = proj_data_dir
+print(f"Using PROJ data from: {proj_data_dir}")
+
+
 from datetime import datetime
 import h5py
-import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 import glob
 import json
@@ -25,16 +33,15 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
-import rasterio
 
-# Importer les fonctions utilitaires
-from script.utils.processing_utils import resize_image, load_data_rasterio, compute_mask_statistics, get_date_ranges_by_satellite
+# Import utility functions
+from script.utils.processing_utils import resize_image, load_data_rasterio
 
 
 def extract_metadata_from_filename(filename):
     """
-    Extrait les métadonnées du nom de fichier.
-    Format: PA_ABL001_HH_20200110.tif ou TX_ABL001_HH_20071024.tif
+    Extract metadata from filename.
+    Format: PA_ABL001_HH_20200110.tif or TX_ABL001_HH_20071024.tif
     
     Returns:
         dict: satellite_code, group, polarisation, date
@@ -43,7 +50,7 @@ def extract_metadata_from_filename(filename):
     parts = basename.replace(".tif", "").split("_")
     
     return {
-        'satellite_code': parts[0],  # PA (PAZ) ou TX (TerraSAR-X) ou TD (TanDEM-X)
+        'satellite_code': parts[0],  # PA (PAZ) or TX (TerraSAR-X) or TD (TanDEM-X)
         'group': parts[1],
         'polarisation': parts[2],
         'date': parts[3]
@@ -52,20 +59,20 @@ def extract_metadata_from_filename(filename):
 
 def get_satellite_info(date_str, acquisition_df):
     """
-    Récupère les informations satellite depuis data.csv pour une date donnée.
+    Retrieve satellite information from data.csv for a given date.
     
     Args:
-        date_str: Date au format YYYYMMDD
-        acquisition_df: DataFrame avec les données d'acquisition
+        date_str: Date in YYYYMMDD format
+        acquisition_df: DataFrame with acquisition data
     
     Returns:
-        dict: Informations satellite (nom, angle, résolution, orbite)
+        dict: Satellite information (name, angle, resolution, orbit)
     """
-    # Convertir date_str YYYYMMDD en format comparable
+    # Convert date_str YYYYMMDD to comparable format
     date_obj = datetime.strptime(date_str, '%Y%m%d')
     date_formatted = date_obj.strftime('%Y-%m-%d')
     
-    # Chercher dans le DataFrame
+    # Search in DataFrame
     match = acquisition_df[acquisition_df['Date'] == date_formatted]
     
     if len(match) > 0:
@@ -78,7 +85,7 @@ def get_satellite_info(date_str, acquisition_df):
             'resolution_azimuth': float(row['Résolution Azimuth'].replace(' m', ''))
         }
     else:
-        # Valeurs par défaut si non trouvé
+        # Default values if not found
         return {
             'satellite': 'Unknown',
             'pass': 'Unknown',
@@ -90,7 +97,7 @@ def get_satellite_info(date_str, acquisition_df):
 
 def open_files_with_metadata(group_folder, polarisation, acquisition_df, nan=-999):
     """
-    Charge les fichiers avec métadonnées enrichies depuis data.csv
+    Load files with enriched metadata from data.csv
     
     Returns:
         tuple: (tensor_img, tensor_mask, tensor_time, metadata_list, mean_geo, mean_shape)
@@ -104,21 +111,21 @@ def open_files_with_metadata(group_folder, polarisation, acquisition_df, nan=-99
     files = sorted(glob.glob(os.path.join(group_folder, f"*{polarisation}*.tif")))
     
     for file in files:
-        # Charger l'image avec rasterio
+        # Load image with rasterio
         img, geo = load_data_rasterio(file)
         tensor_data.append(img)
         tensor_shape.append(img.shape)
         tensor_geo.append(geo[0])
         
-        # Extraire métadonnées du nom de fichier
+        # Extract metadata from filename
         file_meta = extract_metadata_from_filename(file)
         dt = file_meta['date']
         tensor_time.append(dt)
         
-        # Récupérer infos satellite depuis CSV
+        # Retrieve satellite info from CSV
         sat_info = get_satellite_info(dt, acquisition_df)
         
-        # Combiner les métadonnées
+        # Combine metadata
         metadata_list.append({
             'date': dt,
             'satellite': sat_info['satellite'],
@@ -132,28 +139,33 @@ def open_files_with_metadata(group_folder, polarisation, acquisition_df, nan=-99
     if len(tensor_data) == 0:
         return None, None, None, None, None, None
     
-    # Calculer la forme moyenne
+    # Calculate mean shape
     mean_shape = np.mean(tensor_shape, axis=0, dtype=int)
     mean_geo = (tuple(np.mean(tensor_geo, axis=0)), geo[1])
     
-    # Redimensionner les images
-    tensor_img = np.array(
-        [resize_image(img[:, :, 0], new_shape=mean_shape[:-1]) for img in tensor_data],
-        dtype=np.float32,
-    )
-    tensor_img = np.where(tensor_img <= 0, nan, tensor_img)
+    # Resize images
+    resized_images = []
+    for img in tensor_data:
+        img_channel = img[:, :, 0].copy()
+        # Replace problematic values BEFORE resize to avoid NaN propagation
+        img_channel = np.where(np.isfinite(img_channel), img_channel, nan)
+        img_channel = np.where(img_channel <= 0, nan, img_channel)
+        resized = resize_image(img_channel, new_shape=mean_shape[:-1])
+        resized_images.append(resized)
     
-    # Traiter les masques : nettoyer et convertir nodata
+    tensor_img = np.array(resized_images, dtype=np.float32)
+    
+    # Process masks: clean and convert nodata
     mask_list = []
     for img in tensor_data:
-        mask = resize_image(img[:, :, 1], new_shape=mean_shape[:-1], order=0)  # order=0 pour nearest neighbor
+        mask = resize_image(img[:, :, 1], new_shape=mean_shape[:-1], order=0)  # order=0 for nearest neighbor
         
-        # Nettoyer le masque : garder seulement 0, 1, 2, 3 et nodata
-        # Convertir -999.0 en -127 (valeur spéciale pour int8)
+        # Clean mask: keep only 0, 1, 2, 3 and nodata
+        # Convert -999.0 to -127 (special value for int8)
         mask_cleaned = np.where(mask == nan, -127, mask)
         
-        # Forcer les valeurs valides à être dans [0, 3]
-        # Toute autre valeur devient -127 (nodata)
+        # Force valid values to be in [0, 3]
+        # Any other value becomes -127 (nodata)
         valid_mask = np.isin(mask_cleaned, [0, 1, 2, 3, -127])
         mask_cleaned = np.where(valid_mask, mask_cleaned, -127)
         
@@ -161,7 +173,7 @@ def open_files_with_metadata(group_folder, polarisation, acquisition_df, nan=-99
     
     tensor_mask = np.array(mask_list, dtype=np.int8)
     
-    # Réorganiser: (time, height, width) -> (height, width, time)
+    # Reorganize: (time, height, width) -> (height, width, time)
     tensor_img = np.moveaxis(tensor_img, 0, -1)
     tensor_mask = np.moveaxis(tensor_mask, 0, -1)
     tensor_time = np.array(tensor_time, dtype='S8')
@@ -170,7 +182,7 @@ def open_files_with_metadata(group_folder, polarisation, acquisition_df, nan=-99
 
 
 def sort_by_time(tensor_img, tensor_mask, tensor_time, metadata_list):
-    """Trie les tenseurs par ordre chronologique"""
+    """Sort tensors by chronological order"""
     idx = np.argsort(tensor_time)
     tensor_img = tensor_img[:, :, idx]
     tensor_mask = tensor_mask[:, :, idx]
@@ -180,10 +192,20 @@ def sort_by_time(tensor_img, tensor_mask, tensor_time, metadata_list):
 
 
 def compute_statistics(data, nodata=-999):
-    """Calcule les statistiques pour normalisation"""
-    valid_data = data[data != nodata]
-    
-    if len(valid_data) == 0:
+    """
+    Calculate statistics for normalization.
+    Filter nodata values (with tolerance), NaN and infinities.
+
+    Uses an absolute tolerance when comparing to `nodata` to account for
+    small perturbations introduced by resampling/interpolation.
+    """
+    # Mask out non-finite values and values close to nodata
+    nodata_mask = np.isclose(data, nodata, atol=5)
+    valid_mask = np.isfinite(data) & (~nodata_mask)
+    valid_data = data[valid_mask]
+
+    if valid_data.size == 0:
+        # No valid data: return safe defaults
         return {
             'mean': 0.0,
             'std': 1.0,
@@ -192,7 +214,7 @@ def compute_statistics(data, nodata=-999):
             'percentile_1': 0.0,
             'percentile_99': 1.0
         }
-    
+
     return {
         'mean': float(np.mean(valid_data)),
         'std': float(np.std(valid_data)),
@@ -205,15 +227,15 @@ def compute_statistics(data, nodata=-999):
 
 def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_csv, nodata=-999.0):
     """
-    Crée un dataset HDF5 optimisé pour le ML.
+    Create an optimized HDF5 dataset for ML.
     
-    Structure HDF5:
+    HDF5 Structure:
     /
     ├── metadata/
-    │   ├── classes.json (liste des classes)
-    │   ├── groups.json (liste des groupes par classe)
-    │   ├── statistics.json (statistiques globales)
-    │   └── acquisition_info (table des acquisitions)
+    │   ├── classes.json (list of classes)
+    │   ├── groups.json (list of groups per class)
+    │   ├── statistics.json (global statistics)
+    │   └── acquisition_info (acquisition table)
     ├── data/
     │   ├── {GROUP_NAME}/
     │   │   ├── {ORBIT}/
@@ -225,32 +247,32 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
     │   │   │   │   ├── angles_incidence (T,)
     │   │   │   │   └── attributes: stats, geo, shape
     └── index/
-        ├── by_satellite/ (index groupé par satellite)
-        ├── by_class/ (index groupé par classe)
-        ├── by_period/ (index par période temporelle)
-        └── temporal_ranges (début/fin par groupe)
+        ├── by_satellite/ (satellite-grouped index)
+        ├── by_class/ (class-grouped index)
+        ├── by_period/ (period index)
+        └── temporal_ranges (start/end per group)
     """
     
-    # Charger les métadonnées
+    # Load metadata
     metadata_df = pd.read_csv(metadata_csv)
     acquisition_df = pd.read_csv(acquisition_csv)
     
-    print("  Création du dataset HDF5 optimisé pour ML...")
+    print("  Creating optimized HDF5 dataset for ML...")
     print(f"  Output: {output_file}")
     print(f"  Data directory: {data_dir}")
     
     with h5py.File(output_file, 'w') as hdf5_file:
-        # Créer les groupes principaux
+        # Create main groups
         meta_group = hdf5_file.create_group('metadata')
         data_group = hdf5_file.create_group('data')
         index_group = hdf5_file.create_group('index')
         
-        # Structures pour les index
+        # Structures for indexes
         satellite_index = defaultdict(list)
         class_index = defaultdict(list)
         temporal_ranges = {}
         
-        # Parcourir les orbites
+        # Browse orbits
         for orbit in ['ASC', 'DSC']:
             orbit_path = os.path.join(data_dir, orbit)
             if not os.path.exists(orbit_path):
@@ -265,23 +287,37 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                 for group_folder in tqdm(group_folders, desc=f"Processing {orbit}/{class_name}"):
                     group_name = os.path.basename(group_folder)
                     
-                    # Récupérer les métadonnées géographiques
+                    # Retrieve geographical metadata
                     try:
-                        group_num = group_name[-3:]
-                        if group_num[0] == '0':
-                            group_num = int(group_num)
+                        # Extract group number (last 3 characters) or full name
+                        # Groups in CSV are in format '001', '002', etc. (3 digits with zeros)
+                        # or special names like 'ALL_GLACIERS', 'ARGENTIER_TOP'
+                        
+                        # Mapping for truncated names -> full names
+                        special_names = {
+                            'ALLGLA': 'ALLGLACIERS',
+                            'ARGTOP': 'ARGENTIERTOP'
+                        }
+                        
+                        if len(group_name) >= 6 and group_name[-3:].isdigit():
+                            # Normal case: FOR006 -> '006'
+                            group_num = group_name[-3:]
+                        elif group_name in special_names:
+                            # Special cases: ALLGLA -> 'ALLGLACIERS'
+                            group_num = special_names[group_name]
                         else:
+                            # Other cases
                             group_num = group_name
                         
                         meta_row = metadata_df.loc[
                             np.logical_and(
                                 metadata_df['classe'] == class_name,
-                                metadata_df['group'].astype(str).str.replace('_', '') == str(group_num)
+                                metadata_df['group'].astype(str).str.replace('_', '') == group_num
                             )
                         ]
                         
                         if len(meta_row) == 0:
-                            print(f"  ⚠️ Métadonnées manquantes pour {group_name}")
+                            print(f"  ⚠️ Missing metadata for {group_name}")
                             continue
                         
                         latitude, longitude, elevation, orientation, slope, class_id = meta_row[[
@@ -289,10 +325,10 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         ]].values[0]
                         
                     except Exception as e:
-                        print(f"  ⚠️ Erreur métadonnées {group_name}: {e}")
+                        print(f"  ⚠️ Metadata error {group_name}: {e}")
                         continue
                     
-                    # Créer le groupe dans HDF5
+                    # Create group in HDF5
                     if group_name not in data_group:
                         group_hdf = data_group.create_group(group_name)
                         group_hdf.attrs['class'] = class_name
@@ -307,11 +343,11 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                     else:
                         group_hdf = data_group[group_name]
                     
-                    # Créer le sous-groupe pour l'orbite
+                    # Create orbit subgroup
                     orbit_hdf = group_hdf.create_group(orbit)
                     orbit_hdf.attrs['orbit'] = 'ascending' if orbit == 'ASC' else 'descending'
                     
-                    # Traiter chaque polarisation
+                    # Process each polarisation
                     for polarisation in ['HH', 'HV']:
                         result = open_files_with_metadata(
                             group_folder, polarisation, acquisition_df, nan=nodata
@@ -322,16 +358,16 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         
                         data, mask, timestamps, metadata_list, geoinfo, shape_data = result
                         
-                        # Trier par ordre chronologique
+                        # Sort by chronological order
                         data, mask, timestamps, metadata_list = sort_by_time(
                             data, mask, timestamps, metadata_list
                         )
                         
-                        # Créer le groupe de polarisation
+                        # Create polarisation group
                         pol_hdf = orbit_hdf.create_group(polarisation)
                         
-                        # Stocker les données avec chunking optimisé pour ML
-                        # Chunks: accès à une image complète à un instant donné
+                        # Store data with ML-optimized chunking
+                        # Chunks: access to a complete image at a given time
                         chunk_shape = (data.shape[0], data.shape[1], 1)
                         
                         pol_hdf.create_dataset(
@@ -354,7 +390,7 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         
                         pol_hdf.create_dataset('timestamps', data=timestamps)
                         
-                        # Extraire et stocker les métadonnées satellite
+                        # Extract and store satellite metadata
                         satellites = np.array([m['satellite'] for m in metadata_list], dtype='S20')
                         passes = np.array([m['pass'] for m in metadata_list], dtype='S20')
                         angles = np.array([m['angle_incidence'] for m in metadata_list], dtype=np.float32)
@@ -367,23 +403,37 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         pol_hdf.create_dataset('resolution_range', data=res_range)
                         pol_hdf.create_dataset('resolution_azimuth', data=res_azimuth)
                         
-                        # Calculer et stocker les statistiques
+                        # Calculate and store statistics
+                        # Debug: check values before stats calculation
+                        n_total = data.size
+                        # nodata exact match (may be zero if resampling altered values)
+                        n_nodata_exact = int(np.sum(data == nodata))
+                        # nodata approximate match (to catch -998.99 etc. after interpolation)
+                        n_nodata_close = int(np.sum(np.isclose(data, nodata, atol=0.5)))
+                        n_nan = int(np.sum(np.isnan(data)))
+                        # Consider valid those that are finite and not close to nodata
+                        n_valid = int(np.sum(np.isfinite(data) & (~np.isclose(data, nodata, atol=0.5))))
+
+                        if n_valid == 0:
+                            print(f"      ⚠️ {group_name}/{orbit}/{polarisation}: No valid data!")
+                            print(f"         Total pixels: {n_total}, nodata_exact: {n_nodata_exact}, nodata_approx: {n_nodata_close}, NaN: {n_nan}")
+
                         stats = compute_statistics(data, nodata)
                         for key, value in stats.items():
                             pol_hdf.attrs[f'stat_{key}'] = value
                         
-                        # Attributs géographiques
-                        # Convertir le CRS en string pour HDF5
+                        # Geographical attributes
+                        # Convert CRS to string for HDF5
                         crs_str = str(geoinfo[1]) if geoinfo[1] is not None else 'EPSG:32631'
                         pol_hdf.attrs['geo_projection'] = crs_str
                         pol_hdf.attrs['geo_transform'] = geoinfo[0]
                         pol_hdf.attrs['shape_original'] = shape_data
                         pol_hdf.attrs['n_timestamps'] = len(timestamps)
                         
-                        # Construire les index
+                        # Build indexes
                         path = f"{group_name}/{orbit}/{polarisation}"
                         
-                        # Index par satellite
+                        # Index by satellite
                         for i, sat in enumerate(satellites):
                             sat_name = sat.decode('utf-8')
                             satellite_index[sat_name].append({
@@ -394,7 +444,7 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                                 'group': group_name
                             })
                         
-                        # Index par classe
+                        # Index by class
                         class_index[class_name].append({
                             'path': path,
                             'group': group_name,
@@ -403,88 +453,88 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                             'n_samples': len(timestamps)
                         })
                         
-                        # Ranges temporels
+                        # Temporal ranges
                         temporal_ranges[path] = {
                             'start': timestamps[0].decode('utf-8'),
                             'end': timestamps[-1].decode('utf-8'),
                             'n_samples': len(timestamps)
                         }
         
-        # Sauvegarder les index
-        print("\n Création des index...")
+        # Save indexes
+        print("\n Creating indexes...")
         
-        # Index par satellite
+        # Index by satellite
         sat_index_group = index_group.create_group('by_satellite')
         for sat_name, entries in satellite_index.items():
             sat_group = sat_index_group.create_group(sat_name)
             sat_group.attrs['n_entries'] = len(entries)
             sat_group.attrs['entries_json'] = json.dumps(entries)
         
-        # Index par classe
+        # Index by class
         class_index_group = index_group.create_group('by_class')
         for class_name, entries in class_index.items():
             cls_group = class_index_group.create_group(class_name)
             cls_group.attrs['n_groups'] = len(entries)
             cls_group.attrs['entries_json'] = json.dumps(entries)
         
-        # Ranges temporels
+        # Temporal ranges
         temp_range_group = index_group.create_group('temporal_ranges')
         temp_range_group.attrs['ranges_json'] = json.dumps(temporal_ranges)
         
-        # Métadonnées globales
+        # Global metadata
         meta_group.attrs['classes'] = json.dumps(list(class_index.keys()))
         meta_group.attrs['satellites'] = json.dumps(list(satellite_index.keys()))
         meta_group.attrs['n_total_groups'] = len(temporal_ranges)
         meta_group.attrs['creation_date'] = datetime.now().isoformat()
         meta_group.attrs['nodata_value'] = nodata
         
-        print(f"\nDataset créé avec succès!")
-        print(f"  {len(temporal_ranges)} groupes traités")
+        print(f"\nDataset created successfully!")
+        print(f"  {len(temporal_ranges)} groups processed")
         print(f"  {len(class_index)} classes: {list(class_index.keys())}")
         print(f"  {len(satellite_index)} satellites: {list(satellite_index.keys())}")
 
 
 
 def generate_txt_report(json_file, output_txt):
-    """Génère un rapport texte lisible depuis le JSON détaillé."""
+    """Generate a readable text report from the detailed JSON."""
     
     with open(json_file, 'r') as f:
         report = json.load(f)
     
     with open(output_txt, 'w') as f:
         f.write("="*80 + "\n")
-        f.write("RAPPORT DETAILLE DU DATASET PAZTSX_CRYO_ML\n")
+        f.write("DETAILED REPORT OF PAZTSX_CRYO_ML DATASET\n")
         f.write("="*80 + "\n\n")
         
-        # Métadonnées globales
+        # Global metadata
         meta = report['metadata']
-        f.write("METADONNEES GLOBALES:\n")
+        f.write("GLOBAL METADATA:\n")
         f.write(f"  Classes: {', '.join(meta['classes'])}\n")
         f.write(f"  Satellites: {', '.join(meta['satellites'])}\n")
-        f.write(f"  Nombre total de groupes: {meta['n_total_groups']}\n")
-        f.write(f"  Date de creation: {meta['creation_date']}\n")
-        f.write(f"  Valeur nodata: {meta['nodata_value']}\n\n")
+        f.write(f"  Total number of groups: {meta['n_total_groups']}\n")
+        f.write(f"  Creation date: {meta['creation_date']}\n")
+        f.write(f"  Nodata value: {meta['nodata_value']}\n\n")
         
         f.write("="*80 + "\n")
-        f.write("DETAILS PAR GROUPE\n")
+        f.write("DETAILS BY GROUP\n")
         f.write("="*80 + "\n\n")
         
-        # Parcourir tous les groupes
+        # Browse all groups
         for group_name, group_data in sorted(report['groups'].items()):
-            f.write(f"Groupe: {group_data['group_name']}\n")
-            f.write(f"Classe: {group_data['class']}\n")
+            f.write(f"Group: {group_data['group_name']}\n")
+            f.write(f"Class: {group_data['class']}\n")
             f.write(f"Position: ({group_data['latitude']:.4f}, {group_data['longitude']:.4f})\n")
-            f.write(f"Altitude: {group_data['elevation']:.1f} m\n")
+            f.write(f"Elevation: {group_data['elevation']:.1f} m\n")
             f.write(f"Orientation: {group_data['orientation']:.1f} deg\n")
-            f.write(f"Pente: {group_data['slope']:.1f} deg\n")
+            f.write(f"Slope: {group_data['slope']:.1f} deg\n")
             
-            # Parcourir les orbites
+            # Browse orbits
             for orbit_name in ['ASC', 'DSC']:
                 if orbit_name in group_data['orbits']:
                     orbit_data = group_data['orbits'][orbit_name]
                     f.write(f"{orbit_name}:\n")
                     
-                    # Parcourir les polarisations
+                    # Browse polarisations
                     for pol_name in ['HH', 'HV']:
                         if pol_name in orbit_data:
                             pol_data = orbit_data[pol_name]
@@ -493,18 +543,18 @@ def generate_txt_report(json_file, output_txt):
                             f.write(f"    NaN: {pol_data['nan_info']['percentage']:.2f}% ({pol_data['nan_info']['count']} pixels)\n")
                             f.write(f"    Dates: {pol_data['date_min']} -> {pol_data['date_max']}\n")
                             
-                            # Plages par satellite
+                            # Ranges by satellite
                             if pol_data['date_ranges']:
                                 for sat_name in ['PAZ', 'TerraSAR-X', 'TanDEM-X']:
                                     if sat_name in pol_data['date_ranges']:
                                         dates = pol_data['date_ranges'][sat_name]
                                         f.write(f"      {sat_name}: {dates['min']} -> {dates['max']} ({dates['count']} acq)\n")
                             
-                            # Statistiques des masques (simplifié - seulement classes principales)
+                            # Mask statistics (simplified - only main classes)
                             mask_stats = pol_data['mask_statistics']
-                            f.write(f"    Classes masques (principales):\n")
+                            f.write(f"    Mask classes (main):\n")
                             
-                            # Trier par pourcentage décroissant et prendre les 5 premiers
+                            # Sort by decreasing percentage and take first 5
                             sorted_classes = sorted(mask_stats.items(), 
                                                   key=lambda x: x[1]['percentage'], 
                                                   reverse=True)[:5]
@@ -514,51 +564,57 @@ def generate_txt_report(json_file, output_txt):
             
             f.write("\n" + "-"*80 + "\n\n")
     
-    print(f"Rapport texte sauvegarde: {output_txt}")
+    print(f"Text report saved: {output_txt}")
 
 
-def print_dataset_summary(hdf5_file):
-    """Affiche un résumé du dataset créé"""
-    print("\n" + "="*60)
-    print("RESUME DU DATASET")
-    print("="*60)
+def save_dataset_summary_to_txt(hdf5_file, output_txt):
+    """Save a summary of the created dataset to a text file"""
     
-    with h5py.File(hdf5_file, 'r') as f:
-        # Métadonnées globales
-        meta = f['metadata']
-        print(f"\nClasses: {json.loads(meta.attrs['classes'])}")
-        print(f"Satellites: {json.loads(meta.attrs['satellites'])}")
-        print(f"Nombre de groupes: {meta.attrs['n_total_groups']}")
-        print(f"Cree le: {meta.attrs['creation_date']}")
+    with open(output_txt, 'w') as f:
+        f.write("="*60 + "\n")
+        f.write("DATASET SUMMARY\n")
+        f.write("="*60 + "\n")
         
-        # Exemple de données
-        print("\nExemple de structure (premier groupe):")
-        data_group = f['data']
-        first_group = list(data_group.keys())[0]
-        print(f"  Groupe: {first_group}")
-        
-        group = data_group[first_group]
-        print(f"    Classe: {group.attrs['class']}")
-        print(f"    Position: ({group.attrs['latitude']:.4f}, {group.attrs['longitude']:.4f})")
-        print(f"    Altitude: {group.attrs['elevation']:.1f} m")
-        
-        for orbit in group.keys():
-            print(f"    {orbit}:")
-            for pol in group[orbit].keys():
-                pol_data = group[orbit][pol]
-                print(f"      {pol}: {pol_data['images'].shape} - {pol_data.attrs['n_timestamps']} acquisitions")
-                print(f"        Stats: mean={pol_data.attrs['stat_mean']:.2f}, std={pol_data.attrs['stat_std']:.2f}")
+        with h5py.File(hdf5_file, 'r') as hdf5_f:
+            # Global metadata
+            meta = hdf5_f['metadata']
+            f.write(f"\nClasses: {json.loads(meta.attrs['classes'])}\n")
+            f.write(f"Satellites: {json.loads(meta.attrs['satellites'])}\n")
+            f.write(f"Number of groups: {meta.attrs['n_total_groups']}\n")
+            f.write(f"Created on: {meta.attrs['creation_date']}\n")
+            
+            # Example data
+            f.write("\nExample structure (first group):\n")
+            data_group = hdf5_f['data']
+            first_group = list(data_group.keys())[0]
+            f.write(f"  Group: {first_group}\n")
+            
+            group = data_group[first_group]
+            f.write(f"    Class: {group.attrs['class']}\n")
+            f.write(f"    Position: ({group.attrs['latitude']:.4f}, {group.attrs['longitude']:.4f})\n")
+            f.write(f"    Elevation: {group.attrs['elevation']:.1f} m\n")
+            
+            for orbit in group.keys():
+                f.write(f"    {orbit}:\n")
+                for pol in group[orbit].keys():
+                    pol_data = group[orbit][pol]
+                    f.write(f"      {pol}: {pol_data['images'].shape} - {pol_data.attrs['n_timestamps']} acquisitions\n")
+                    f.write(f"        Stats: min={pol_data.attrs['stat_min']:.2f}, max={pol_data.attrs['stat_max']:.2f}, mean={pol_data.attrs['stat_mean']:.2f}, std={pol_data.attrs['stat_std']:.2f}\n")
+                    f.write(f"        Percentiles: p1={pol_data.attrs['stat_percentile_1']:.2f}, p99={pol_data.attrs['stat_percentile_99']:.2f}\n")
+    
+    print(f"Dataset summary saved to: {output_txt}")
 
 
 if __name__ == "__main__":
+    
     # Configuration
-    output_file = "../DATASET/PAZTSX_CRYO_ML.hdf5"
-    data_dir = "../ORIGINAL_DATA/"
-    metadata_csv = "../ORIGINAL_DATA/metadata/details_shp.csv"
-    acquisition_csv = "../ORIGINAL_DATA/metadata/data.csv"
+    output_file = "../../DATASET/PAZTSX_CRYO_ML.hdf5"
+    data_dir = "../../ORIGINAL_DATA/"
+    metadata_csv = "../../ORIGINAL_DATA/metadata/shapefile_statistics.csv"
+    acquisition_csv = "../../ORIGINAL_DATA/metadata/data.csv"
     nodata = -999.0
     
-    # Créer le dataset
+    # Create the dataset
     create_optimized_dataset(
         output_file=output_file,
         data_dir=data_dir,
@@ -567,14 +623,13 @@ if __name__ == "__main__":
         nodata=nodata
     )
     
-    # Afficher le résumé
-    print_dataset_summary(output_file)
+    # Save the summary to text file
+    summary_txt = output_file.replace('.hdf5', '_summary.txt')
+    save_dataset_summary_to_txt(output_file, summary_txt)
     
-    # Générer le rapport texte lisible
-    txt_report = output_file.replace('.hdf5', '_report.txt')
-    json_report = output_file.replace('.hdf5', '_detailed_report.json')
-    generate_txt_report(json_report, txt_report)
+
     
     print("\n" + "="*60)
-    print("TERMINE!")
+    print("DONE!")
     print("="*60)
+
