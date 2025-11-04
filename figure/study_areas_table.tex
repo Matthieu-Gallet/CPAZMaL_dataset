@@ -1,22 +1,26 @@
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
-\caption{Caractéristiques des zones d'étude par classe}
+\caption{Detail of the mean value over each classes of spatial, temporal and topographic parameters}
 \label{tab:study_areas}
-\begin{tabular}{|l|c|c|c|c|c|c|}
-\hline
-\textbf{Classe} & \textbf{N} & \textbf{Altitude (m)} & \textbf{Pente (°)} & \textbf{Exposition (°)} & \textbf{Latitude} & \textbf{Longitude} \\
-\hline
-ABL & 7 & 2577 $\pm$ 206 & 17.1 $\pm$ 5.2 & 268 $\pm$ 47 & 45.926 & 6.962 \\
-ACC & 9 & 3077 $\pm$ 402 & 26.1 $\pm$ 10.2 & 220 $\pm$ 71 & 45.916 & 6.968 \\
-FOR & 9 & 1436 $\pm$ 194 & 24.4 $\pm$ 9.3 & 283 $\pm$ 56 & 45.971 & 6.907 \\
-HAG & 7 & 3203 $\pm$ 184 & 47.2 $\pm$ 8.5 & 232 $\pm$ 119 & 45.891 & 6.928 \\
-ICA & 9 & 3353 $\pm$ 295 & 43.5 $\pm$ 12.0 & 270 $\pm$ 90 & 45.920 & 6.966 \\
-LAC & 9 & 1865 $\pm$ 616 & 8.5 $\pm$ 6.2 & 179 $\pm$ 46 & 45.965 & 6.886 \\
-PLA & 9 & 1834 $\pm$ 296 & 18.9 $\pm$ 7.5 & 223 $\pm$ 74 & 45.982 & 6.908 \\
-ROC & 9 & 2333 $\pm$ 206 & 26.6 $\pm$ 5.5 & 236 $\pm$ 74 & 45.947 & 6.908 \\
-STUDY & 2 & 2739 $\pm$ 54 & 21.3 $\pm$ 14.2 & 272 $\pm$ 21 & 45.922 & 6.960 \\
+\resizebox{\textwidth}{!}{%
+\begin{NiceTabular}{lccccccccccccccccc}
+\toprule
+\textbf{Class} & \textbf{Number} & \textbf{Size} & \textbf{Valid} & \Block{1-5}{\textbf{Ascending (n. acq.)}} & & & & & \Block{1-5}{\textbf{Descending (n. acq.)}} & & & & & \textbf{Alt} & \textbf{Slope} & \textbf{Asp} & \textbf{Lat/Lon} \\
+& \textbf{of groups} & \textbf{(H$\times$W)} & \textbf{(\%)} & \Block{1-2}{\textit{Polarization}} & & \Block{1-3}{\textit{Satellites}} & & & \Block{1-2}{\textit{Polarization}} & & \Block{1-3}{\textit{Satellites}} & & & \textbf{(m)} & \textbf{(°)} & \textbf{(°)} & \\
+& & & & \text{HH} & \text{HV} & \text{PAZ} & \text{TSX} & \text{TDX} & \text{HH} & \text{HV} & \text{PAZ} & \text{TSX} & \text{TDX} & & & & \\
+\midrule
+ABL & 7 & $255 \times 336$ & 49.2 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 2577$\pm$206 & 17.1$\pm$5.2 & 268$\pm$47 & 45.93/6.96 \\
+ACC & 9 & $185 \times 338$ & 63.1 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 3077$\pm$402 & 26.1$\pm$10.2 & 220$\pm$71 & 45.92/6.97 \\
+FOR & 9 & $285 \times 391$ & 44.8 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 1436$\pm$194 & 24.4$\pm$9.3 & 283$\pm$56 & 45.97/6.91 \\
+HAG & 7 & $44 \times 73$ & 60.1 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 3203$\pm$184 & 47.2$\pm$8.5 & 232$\pm$119 & 45.89/6.93 \\
+ICA & 9 & $67 \times 103$ & 45.8 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 3353$\pm$295 & 43.5$\pm$12.0 & 270$\pm$90 & 45.92/6.97 \\
+LAC & 9 & $40 \times 52$ & 57.6 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 1865$\pm$616 & 8.5$\pm$6.2 & 179$\pm$46 & 45.97/6.89 \\
+PLA & 9 & $179 \times 273$ & 44.3 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 1834$\pm$296 & 18.9$\pm$7.5 & 223$\pm$74 & 45.98/6.91 \\
+ROC & 9 & $145 \times 227$ & 51.6 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 2333$\pm$206 & 26.6$\pm$5.5 & 236$\pm$74 & 45.95/6.91 \\
+STUDY & 2 & $996 \times 1400$ & 28.2 & 82 & 21 & 73 & 19 & 11 & 95 & 44 & 96 & 43 & 0 & 2739$\pm$54 & 21.3$\pm$14.2 & 272$\pm$21 & 45.92/6.96 \\
 
-\hline
-\end{tabular}
-\end{table}
+\bottomrule
+\end{NiceTabular}%
+}
+\end{table*}

@@ -59,7 +59,9 @@ Output: `DATASET/PAZTSX_CRYO_ML.hdf5` (optimized for ML with chunking, compressi
 
 ### Study Areas
 
-The dataset covers 70 labeled areas across 9 land surface classes in the Mont-Blanc massif:
+The dataset covers 70 labeled areas across 9 land surface classes in the Mont-Blanc massif. The complete detail of each groups is given in the `figure/table_groups.pdf` file. A summary is provided with the following table:
+
+
 
 | Class | N  | Altitude (m)     | Slope (°)        | Aspect (°)       | Lat    | Lon   |
 |-------|----|------------------|------------------|------------------|--------|-------|
@@ -300,13 +302,7 @@ Information of distorted pixels is provided via quality masks (Obtained from ESA
 If you use this dataset, please cite:
 
 ```
-@dataset{cpazmal2025,
-  author = {},
-  title = {CPAZMAL: Cryospheric PAZ and TerraSAR-X/TanDEM-X Machine Learning Dataset},
-  year = {2025},
-  publisher = {GitHub},
-  url = {https://github.com/Matthieu-Gallet/dataset_PAZ_TSX}
-}
+[to be filled]
 ```
 
 ## 6. License
@@ -317,4 +313,7 @@ If you use this dataset, please cite:
 
 [contact information]
 
+
+## 8. Acknowledgements
+The authors would like to thank the *Spanish Instituto Nacional de Técnica Aeroespacial* (INTA) for providing the PAZ images (Project AO-001-051).
 
