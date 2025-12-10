@@ -724,6 +724,7 @@ def scenario_4_domain_adaptation_satellite(
     X_source_all = []
     X_target_all = []
     y_source_all = []
+    y_target_all = []
     groups_source_all = []
     groups_target_all = []
     masks_source_all = []
@@ -866,6 +867,7 @@ def scenario_4_domain_adaptation_satellite(
             # Store individually
             for idx_win in range(n_windows):
                 X_target_all.append(windows[idx_win])
+                y_target_all.append(class_to_int[class_name])  # For analysis only
                 groups_target_all.append(group_to_int[group_name])
                 masks_target_all.append(window_masks[idx_win])
                 group_names_target_all.append(group_name)
@@ -879,6 +881,7 @@ def scenario_4_domain_adaptation_satellite(
     X_source = np.array(X_source_all, dtype=np.float32)
     X_target = np.array(X_target_all, dtype=np.float32)
     y_source = np.array(y_source_all)
+    y_target = np.array(y_target_all)
     groups_source = np.array(groups_source_all)
     groups_target = np.array(groups_target_all)
     masks_source = np.array(masks_source_all)
@@ -895,6 +898,7 @@ def scenario_4_domain_adaptation_satellite(
         print(f"    Unique groups: {len(np.unique(groups_source))}")
         print(f"  - TARGET (TerraSAR-X {target_date}):")
         print(f"    X_target.shape: {X_target.shape}")
+        print(f"    y_target.shape: {y_target.shape}")
         print(f"    groups_target.shape: {groups_target.shape}")
         print(f"    Unique groups: {len(np.unique(groups_target))}")
         
