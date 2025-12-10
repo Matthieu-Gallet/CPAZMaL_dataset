@@ -671,18 +671,21 @@ def scenario_4_domain_adaptation_satellite(
     max_mask_value: int = 1,
     max_mask_percentage: float = 10.0,
     min_valid_percentage: float = 50.0,
-    orbit: str = 'DSC',
-    source_date: str = '20200804',
-    target_date: str = '20080805',
+    source_orbit: str = 'DSC',
+    target_orbit: str = 'ASC',
+    source_date: str = '20210127',
+    target_date: str = '20210214',
+    source_polarization: str = 'HH',  # Can be 'HH', 'HV', or ['HH', 'HV']
+    target_polarization: str = 'HH',  # Can be 'HH', 'HV', or ['HH', 'HV']
     scale_type: str = 'intensity',
     skip_optim_offset: bool = True,
     verbose: bool = True
 ) -> Dict:
     """
-    SCENARIO 4: Domain Adaptation PAZ → TerraSAR-X (different dates).
+    SCENARIO 4: Domain Adaptation between different acquisition geometries.
     
-    Objective: Learn on PAZ 2020 (labeled) and adapt on TerraSAR-X 2008 (unlabeled).
-    Source: 2020-08-04 (PAZ), Target: 2008-08-05 (TSX), dual-pol, descending orbit.
+    Objective: Learn on source geometry (labeled) and adapt to target geometry (unlabeled).
+    Default: Source: PAZ DSC 2021-01-27 HH -> Target: PAZ ASC 2021-02-14 HH
     
     Args:
         loader: Instance of MLDatasetLoader
@@ -690,32 +693,37 @@ def scenario_4_domain_adaptation_satellite(
         max_mask_value: Max mask value
         max_mask_percentage: Max % of pixels with mask > max_mask_value
         min_valid_percentage: Min % of valid pixels
-        orbit: Orbit
-        source_date: Source acquisition date PAZ ('20200804')
-        target_date: Target acquisition date TSX ('20080805')
+        source_orbit: Source orbit ('ASC' or 'DSC')
+        target_orbit: Target orbit ('ASC' or 'DSC')
+        source_date: Source acquisition date ('YYYYMMDD')
+        target_date: Target acquisition date ('YYYYMMDD')
+        source_polarization: Source polarization ('HH', 'HV', or ['HH', 'HV'])
+        target_polarization: Target polarization ('HH', 'HV', or ['HH', 'HV'])
+        scale_type: 'intensity' (default), 'amplitude', or 'log10'
+        skip_optim_offset: Skip window offset optimization
         verbose: Display detailed information
     
     Returns:
         Dict with:
-            - X_source (PAZ): Array (N_source, window_size, window_size, 2) - dual-pol
-            - X_target (TSX): Array (N_target, window_size, window_size, 2) - dual-pol
-            - y_source: Array (N_source,) - labels PAZ
-            - groups_source: Array (N_source,) - group identifiers for PAZ encoded as int
-            - groups_target: Array (N_target,) - group identifiers for TSX encoded as int
+            - X_source: Array (N_source, window_size, window_size, n_pol_source)
+            - X_target: Array (N_target, window_size, window_size, n_pol_target)
+            - y_source: Array (N_source,) - labels source
+            - y_target: Array (N_target,) - labels target (for analysis only)
+            - groups_source: Array (N_source,) - group identifiers for source
+            - groups_target: Array (N_target,) - group identifiers for target
             - masks_source: Array (N_source, window_size, window_size)
             - masks_target: Array (N_target, window_size, window_size)
-            - group_names: Dict - mapping int -> group name (common for source and target)
+            - class_names: Dict - mapping int -> class name
+            - group_names: Dict - mapping int -> group name
     """
     print(f"\n{'='*70}")
-    print("SCENARIO 4: Domain Adaptation PAZ -> TerraSAR-X")
+    print("SCENARIO 4: Domain Adaptation - Different Acquisition Geometries")
     print(f"{'='*70}")
     print(f"Parameters:")
     print(f"  - Windows: {window_size}x{window_size}")
-    print(f"  - Date source (PAZ): {source_date}")
-    print(f"  - Date target (TSX): {target_date}")
-    print(f"  - Polarization: Dual (HH+HV)")
-    print(f"  - Orbit: {orbit}")
-    print(f"  - Source: PAZ 2020 (labeled) -> Target: TerraSAR-X 2008 (unlabeled)")
+    print(f"  - Source: PAZ {source_orbit} {source_date} {source_polarization}")
+    print(f"  - Target: PAZ {target_orbit} {target_date} {target_polarization}")
+    print(f"  - Scale type: {scale_type}")
     print(f"  - Mask max: {max_mask_value}, {max_mask_percentage}%\n")
     
     learning_classes = [c for c in loader.classes if c != 'STUDY']
@@ -745,23 +753,23 @@ def scenario_4_domain_adaptation_satellite(
         for group in loader.get_groups_by_class(class_name):
             group_to_class[group] = class_name
     
-    # SOURCE: PAZ
+    # SOURCE
     print("=" * 70)
-    print("Loading SOURCE (PAZ)...")
-    pbar_paz = tqdm(unique_groups, desc="PAZ Groups", unit="grp")
-    for group_name in pbar_paz:
+    print(f"Loading SOURCE ({source_orbit} {source_date} {source_polarization})...")
+    pbar_source = tqdm(unique_groups, desc="Source Groups", unit="grp")
+    for group_name in pbar_source:
         class_name = group_to_class[group_name]
         
         # Update progress bar description with current group
         if verbose:
-            pbar_paz.set_postfix_str(f"{group_name} ({class_name})")
+            pbar_source.set_postfix_str(f"{group_name} ({class_name})")
         
         try:
-            # Load dual-pol for source (PAZ)
+            # Load source data
             data = loader.load_data(
                 group_name=group_name,
-                orbit=orbit,
-                polarisation=['HH', 'HV'],
+                orbit=source_orbit,
+                polarisation=source_polarization,
                 start_date=source_date,
                 end_date=source_date,
                 normalize=False,
@@ -781,7 +789,13 @@ def scenario_4_domain_adaptation_satellite(
             
             # Take the first PAZ acquisition
             idx = paz_indices[0]
-            img = data['images'][:, :, idx, :]  # (H, W, 2)
+            
+            # Handle both single-pol and dual-pol
+            if len(data['images'].shape) == 4:  # Dual-pol: (H, W, T, 2)
+                img = data['images'][:, :, idx, :]  # (H, W, 2)
+            else:  # Single-pol: (H, W, T)
+                img = data['images'][:, :, idx]  # (H, W)
+            
             mask = data['masks'][:, :, idx]
             
             # Extract windows
@@ -802,32 +816,32 @@ def scenario_4_domain_adaptation_satellite(
             n_windows = len(windows)
             
             # Store individually
-            for idx in range(n_windows):
-                X_source_all.append(windows[idx])
+            for idx_win in range(n_windows):
+                X_source_all.append(windows[idx_win])
                 y_source_all.append(class_to_int[class_name])
                 groups_source_all.append(group_to_int[group_name])
-                masks_source_all.append(window_masks[idx])
+                masks_source_all.append(window_masks[idx_win])
                 group_names_source_all.append(group_name)
             
         except Exception as e:
             continue
     
-    # TARGET: TerraSAR-X
+    # TARGET
     print("\n" + "=" * 70)
-    print("Loading TARGET (TerraSAR-X)...")
-    pbar_tsx = tqdm(unique_groups, desc="TSX Groups", unit="grp")
-    for group_name in pbar_tsx:
+    print(f"Loading TARGET ({target_orbit} {target_date} {target_polarization})...")
+    pbar_target = tqdm(unique_groups, desc="Target Groups", unit="grp")
+    for group_name in pbar_target:
         class_name = group_to_class[group_name]
         
         # Update progress bar description with current group
         if verbose:
-            pbar_tsx.set_postfix_str(f"{group_name} ({class_name})")
+            pbar_target.set_postfix_str(f"{group_name} ({class_name})")
         
         try:
             data = loader.load_data(
                 group_name=group_name,
-                orbit=orbit,
-                polarisation=['HH', 'HV'],
+                orbit=target_orbit,
+                polarisation=target_polarization,
                 start_date=target_date,
                 end_date=target_date,
                 normalize=False,
@@ -838,15 +852,21 @@ def scenario_4_domain_adaptation_satellite(
             if data['images'].shape[2] == 0:
                 continue
             
-            # Filter by TerraSAR-X satellite
+            # Filter by PAZ satellite
             satellites = np.array(data['satellites'])
-            tsx_indices = np.where(satellites == 'TerraSAR-X')[0]
+            paz_indices = np.where(satellites == 'PAZ')[0]
             
-            if len(tsx_indices) == 0:
+            if len(paz_indices) == 0:
                 continue
             
-            idx = tsx_indices[0]
-            img = data['images'][:, :, idx, :]
+            idx = paz_indices[0]
+            
+            # Handle both single-pol and dual-pol
+            if len(data['images'].shape) == 4:  # Dual-pol: (H, W, T, 2)
+                img = data['images'][:, :, idx, :]  # (H, W, 2)
+            else:  # Single-pol: (H, W, T)
+                img = data['images'][:, :, idx]  # (H, W)
+            
             mask = data['masks'][:, :, idx]
             
             windows, window_masks, positions = loader.extract_windows(
@@ -856,7 +876,8 @@ def scenario_4_domain_adaptation_satellite(
                 stride=window_size,
                 max_mask_value=max_mask_value,
                 max_mask_percentage=max_mask_percentage,
-                skip_optim_offset=True
+                min_valid_percentage=min_valid_percentage,
+                skip_optim_offset=skip_optim_offset
             )
             
             if windows is None:
@@ -876,7 +897,7 @@ def scenario_4_domain_adaptation_satellite(
             continue
     
     if len(X_source_all) == 0 or len(X_target_all) == 0:
-        raise ValueError("No source data (PAZ) or target (TSX)")
+        raise ValueError("No source or target data found")
     
     X_source = np.array(X_source_all, dtype=np.float32)
     X_target = np.array(X_target_all, dtype=np.float32)
@@ -890,13 +911,13 @@ def scenario_4_domain_adaptation_satellite(
     if verbose:
         print(f"\n{'='*70}")
         print(f"Results:")
-        print(f"  - SOURCE (PAZ {source_date}):")
+        print(f"  - SOURCE ({source_orbit} {source_date} {source_polarization}):")
         print(f"    X_source.shape: {X_source.shape}")
         print(f"    y_source.shape: {y_source.shape}")
         print(f"    groups_source.shape: {groups_source.shape}")
         print(f"    Unique classes: {np.unique(y_source, return_counts=True)}")
         print(f"    Unique groups: {len(np.unique(groups_source))}")
-        print(f"  - TARGET (TerraSAR-X {target_date}):")
+        print(f"  - TARGET ({target_orbit} {target_date} {target_polarization}):")
         print(f"    X_target.shape: {X_target.shape}")
         print(f"    y_target.shape: {y_target.shape}")
         print(f"    groups_target.shape: {groups_target.shape}")
@@ -906,6 +927,7 @@ def scenario_4_domain_adaptation_satellite(
         'X_source': X_source,
         'X_target': X_target,
         'y_source': y_source,
+        'y_target': y_target,
         'groups_source': groups_source,  # Array (N_source,) - encoded as int
         'groups_target': groups_target,  # Array (N_target,) - encoded as int
         'masks_source': masks_source,
@@ -916,10 +938,11 @@ def scenario_4_domain_adaptation_satellite(
             'window_size': window_size,
             'source_date': source_date,
             'target_date': target_date,
-            'orbit': orbit,
-            'polarization': 'Dual (HH+HV)',
-            'source_satellite': 'PAZ',
-            'target_satellite': 'TerraSAR-X'
+            'source_orbit': source_orbit,
+            'target_orbit': target_orbit,
+            'source_polarization': source_polarization,
+            'target_polarization': target_polarization,
+            'satellite': 'PAZ'
         }
     }
 
@@ -993,7 +1016,7 @@ def example_usage(selec: int = None):
         )
         
     # ==========================================================================
-    # SCENARIO 4: Domain Adaptation PAZ vs TerraSAR-X
+    # SCENARIO 4: Domain Adaptation Different Geometries
     # ==========================================================================
     if selec == 4:
         scenario4_data = scenario_4_domain_adaptation_satellite(
@@ -1001,10 +1024,13 @@ def example_usage(selec: int = None):
             window_size=32,
             max_mask_value=1,
             max_mask_percentage=10.0,
-            min_valid_percentage=100.0,  # Changed from 100.0 to 50.0
-            orbit='DSC',
-            source_date='20200804',
-            target_date='20080805',
+            min_valid_percentage=100.0,
+            source_orbit='DSC',
+            target_orbit='ASC',
+            source_date='20210127',
+            target_date='20210214',
+            source_polarization='HH',
+            target_polarization='HH',
             scale_type='amplitude',
             skip_optim_offset=True
         )
