@@ -579,7 +579,7 @@ def save_dataset_summary_to_txt(hdf5_file, output_txt):
 if __name__ == "__main__":
     
     # Configuration
-    output_file = "DATASET/PAZ_CRYO_ML.hdf5"
+    output_file = "DATASET/CPAZMaL.hdf5"
     data_dir = "ORIGINAL_DATA/"
     metadata_csv = "ORIGINAL_DATA/metadata/shapefile_statistics.csv"
     acquisition_csv = "ORIGINAL_DATA/metadata/data.csv"
