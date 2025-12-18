@@ -1,7 +1,7 @@
 .old.zip
 DATASET/*
 ORIGINAL_DATA/*
+ORIGINAL_DATA_noTSX/*
 __pycache__/
 script/__pycache__/*
 dev/*
-DATA/*

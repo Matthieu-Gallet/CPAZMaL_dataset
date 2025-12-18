@@ -4,8 +4,8 @@ Optimized script to create a structured HDF5 dataset for Machine Learning.
 
 Improvements compared to 2_create_dataset.py:
 1. Optimized HDF5 structure with indexes for fast access
-2. Enriched metadata (satellite, resolution, incidence angle)
-3. Organization by satellite and time period
+2. Enriched metadata (resolution, incidence angle)
+3. Organization by time period
 4. Chunking and compression optimized for ML
 5. Pre-calculated normalization attributes
 6. Temporal indexes for fast sequence extraction
@@ -26,7 +26,6 @@ print(f"Using PROJ data from: {proj_data_dir}")
 
 from datetime import datetime
 import h5py
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 import glob
 import json
 import pandas as pd
@@ -35,7 +34,7 @@ from tqdm import tqdm
 from collections import defaultdict
 
 # Import utility functions
-from script.utils.processing_utils import resize_image, load_data_rasterio
+from src.utils.processing_utils import resize_image, load_data_rasterio
 
 
 def extract_metadata_from_filename(filename):
@@ -44,13 +43,12 @@ def extract_metadata_from_filename(filename):
     Format: PA_ABL001_HH_20200110.tif or TX_ABL001_HH_20071024.tif
     
     Returns:
-        dict: satellite_code, group, polarisation, date
+        dict: group, polarisation, date
     """
     basename = os.path.basename(filename)
     parts = basename.replace(".tif", "").split("_")
     
     return {
-        'satellite_code': parts[0],  # PA (PAZ) or TX (TerraSAR-X) or TD (TanDEM-X)
         'group': parts[1],
         'polarisation': parts[2],
         'date': parts[3]
@@ -78,7 +76,6 @@ def get_satellite_info(date_str, acquisition_df):
     if len(match) > 0:
         row = match.iloc[0]
         return {
-            'satellite': row['Satellite'],
             'pass': row['Pass'],
             'angle_incidence': float(row['Angle Incidence'].replace('°', '')),
             'resolution_range': float(row['Résolution Range'].replace(' m', '')),
@@ -87,7 +84,6 @@ def get_satellite_info(date_str, acquisition_df):
     else:
         # Default values if not found
         return {
-            'satellite': 'Unknown',
             'pass': 'Unknown',
             'angle_incidence': 0.0,
             'resolution_range': 0.0,
@@ -128,7 +124,6 @@ def open_files_with_metadata(group_folder, polarisation, acquisition_df, nan=-99
         # Combine metadata
         metadata_list.append({
             'date': dt,
-            'satellite': sat_info['satellite'],
             'pass': sat_info['pass'],
             'angle_incidence': sat_info['angle_incidence'],
             'resolution_range': sat_info['resolution_range'],
@@ -243,11 +238,9 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
     │   │   │   │   ├── images (H×W×T, chunked, compressed)
     │   │   │   │   ├── masks (H×W×T)
     │   │   │   │   ├── timestamps (T,)
-    │   │   │   │   ├── satellite_codes (T,) ["PAZ", "TSX", "TDX"]
     │   │   │   │   ├── angles_incidence (T,)
     │   │   │   │   └── attributes: stats, geo, shape
     └── index/
-        ├── by_satellite/ (satellite-grouped index)
         ├── by_class/ (class-grouped index)
         ├── by_period/ (period index)
         └── temporal_ranges (start/end per group)
@@ -268,7 +261,6 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
         index_group = hdf5_file.create_group('index')
         
         # Structures for indexes
-        satellite_index = defaultdict(list)
         class_index = defaultdict(list)
         temporal_ranges = {}
         
@@ -391,13 +383,11 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         pol_hdf.create_dataset('timestamps', data=timestamps)
                         
                         # Extract and store satellite metadata
-                        satellites = np.array([m['satellite'] for m in metadata_list], dtype='S20')
                         passes = np.array([m['pass'] for m in metadata_list], dtype='S20')
                         angles = np.array([m['angle_incidence'] for m in metadata_list], dtype=np.float32)
                         res_range = np.array([m['resolution_range'] for m in metadata_list], dtype=np.float32)
                         res_azimuth = np.array([m['resolution_azimuth'] for m in metadata_list], dtype=np.float32)
                         
-                        pol_hdf.create_dataset('satellites', data=satellites)
                         pol_hdf.create_dataset('passes', data=passes)
                         pol_hdf.create_dataset('angles_incidence', data=angles)
                         pol_hdf.create_dataset('resolution_range', data=res_range)
@@ -415,7 +405,7 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         n_valid = int(np.sum(np.isfinite(data) & (~np.isclose(data, nodata, atol=0.5))))
 
                         if n_valid == 0:
-                            print(f"      ⚠️ {group_name}/{orbit}/{polarisation}: No valid data!")
+                            print(f"         {group_name}/{orbit}/{polarisation}: No valid data!")
                             print(f"         Total pixels: {n_total}, nodata_exact: {n_nodata_exact}, nodata_approx: {n_nodata_close}, NaN: {n_nan}")
 
                         stats = compute_statistics(data, nodata)
@@ -433,17 +423,7 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
                         # Build indexes
                         path = f"{group_name}/{orbit}/{polarisation}"
                         
-                        # Index by satellite
-                        for i, sat in enumerate(satellites):
-                            sat_name = sat.decode('utf-8')
-                            satellite_index[sat_name].append({
-                                'path': path,
-                                'timestamp_idx': i,
-                                'timestamp': timestamps[i].decode('utf-8'),
-                                'class': class_name,
-                                'group': group_name
-                            })
-                        
+   
                         # Index by class
                         class_index[class_name].append({
                             'path': path,
@@ -463,12 +443,7 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
         # Save indexes
         print("\n Creating indexes...")
         
-        # Index by satellite
-        sat_index_group = index_group.create_group('by_satellite')
-        for sat_name, entries in satellite_index.items():
-            sat_group = sat_index_group.create_group(sat_name)
-            sat_group.attrs['n_entries'] = len(entries)
-            sat_group.attrs['entries_json'] = json.dumps(entries)
+
         
         # Index by class
         class_index_group = index_group.create_group('by_class')
@@ -483,7 +458,6 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
         
         # Global metadata
         meta_group.attrs['classes'] = json.dumps(list(class_index.keys()))
-        meta_group.attrs['satellites'] = json.dumps(list(satellite_index.keys()))
         meta_group.attrs['n_total_groups'] = len(temporal_ranges)
         meta_group.attrs['creation_date'] = datetime.now().isoformat()
         meta_group.attrs['nodata_value'] = nodata
@@ -491,7 +465,6 @@ def create_optimized_dataset(output_file, data_dir, metadata_csv, acquisition_cs
         print(f"\nDataset created successfully!")
         print(f"  {len(temporal_ranges)} groups processed")
         print(f"  {len(class_index)} classes: {list(class_index.keys())}")
-        print(f"  {len(satellite_index)} satellites: {list(satellite_index.keys())}")
 
 
 
@@ -503,14 +476,13 @@ def generate_txt_report(json_file, output_txt):
     
     with open(output_txt, 'w') as f:
         f.write("="*80 + "\n")
-        f.write("DETAILED REPORT OF PAZTSX_CRYO_ML DATASET\n")
+        f.write("DETAILED REPORT OF PAZ_CRYO_ML DATASET\n")
         f.write("="*80 + "\n\n")
         
         # Global metadata
         meta = report['metadata']
         f.write("GLOBAL METADATA:\n")
         f.write(f"  Classes: {', '.join(meta['classes'])}\n")
-        f.write(f"  Satellites: {', '.join(meta['satellites'])}\n")
         f.write(f"  Total number of groups: {meta['n_total_groups']}\n")
         f.write(f"  Creation date: {meta['creation_date']}\n")
         f.write(f"  Nodata value: {meta['nodata_value']}\n\n")
@@ -545,7 +517,7 @@ def generate_txt_report(json_file, output_txt):
                             
                             # Ranges by satellite
                             if pol_data['date_ranges']:
-                                for sat_name in ['PAZ', 'TerraSAR-X', 'TanDEM-X']:
+                                for sat_name in ['PAZ']:
                                     if sat_name in pol_data['date_ranges']:
                                         dates = pol_data['date_ranges'][sat_name]
                                         f.write(f"      {sat_name}: {dates['min']} -> {dates['max']} ({dates['count']} acq)\n")
@@ -579,7 +551,6 @@ def save_dataset_summary_to_txt(hdf5_file, output_txt):
             # Global metadata
             meta = hdf5_f['metadata']
             f.write(f"\nClasses: {json.loads(meta.attrs['classes'])}\n")
-            f.write(f"Satellites: {json.loads(meta.attrs['satellites'])}\n")
             f.write(f"Number of groups: {meta.attrs['n_total_groups']}\n")
             f.write(f"Created on: {meta.attrs['creation_date']}\n")
             
@@ -608,10 +579,10 @@ def save_dataset_summary_to_txt(hdf5_file, output_txt):
 if __name__ == "__main__":
     
     # Configuration
-    output_file = "../../DATASET/PAZTSX_CRYO_ML.hdf5"
-    data_dir = "../../ORIGINAL_DATA/"
-    metadata_csv = "../../ORIGINAL_DATA/metadata/shapefile_statistics.csv"
-    acquisition_csv = "../../ORIGINAL_DATA/metadata/data.csv"
+    output_file = "DATASET/PAZ_CRYO_ML.hdf5"
+    data_dir = "ORIGINAL_DATA/"
+    metadata_csv = "ORIGINAL_DATA/metadata/shapefile_statistics.csv"
+    acquisition_csv = "ORIGINAL_DATA/metadata/data.csv"
     nodata = -999.0
     
     # Create the dataset

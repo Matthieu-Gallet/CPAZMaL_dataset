@@ -1,6 +1,4 @@
-import sys
-sys.path.append("../")
-from utils.geo_tools import *
+from src.utils.geo_tools import *
 import numpy as np
 import os
 import re
@@ -285,9 +283,9 @@ def split_channel(temp):
 
 if __name__ == "__main__":
 
-    shp_path = "../../DATASET/SHP/"
-    output = "../../DATA/"
-    temp_merge_dir = "../../DATA/TEMP_MERGED/"
+    shp_path = "DATASET/SHP/"
+    output = "DATA/"
+    temp_merge_dir = "DATA/TEMP_MERGED/"
 
     for acq in ["asc", "dsc"]:
         acq_upper = acq.upper()  # ASC or DSC
@@ -315,11 +313,7 @@ if __name__ == "__main__":
                 Parallel(n_jobs=-1)(
                     delayed(clip_shp_img)(img, acq_initial, dirs, s) for s in shp_files  # Use acq_initial (A/D)
                 )
-files_proc = glob.glob(f"{output}**/*.tif", recursive=True)
-for temp in tqdm.tqdm(files_proc):
-    split_channel(temp)
-os.rmdir(temp_merge_dir)
-# Error for now probably due to Parallel
-# Parallel(n_jobs=-1)(
-#     delayed(split_channel)(temp) for temp in tqdm.tqdm(files_proc)
-# )
+    files_proc = glob.glob(f"{output}**/*.tif", recursive=True)
+    for temp in tqdm.tqdm(files_proc):
+        split_channel(temp)
+    os.rmdir(temp_merge_dir)

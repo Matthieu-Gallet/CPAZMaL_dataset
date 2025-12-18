@@ -1,14 +1,14 @@
 # CPAZMAL DATASET
 
-Machine learning-ready cryospheric SAR dataset combining PAZ and TerraSAR-X/TanDEM-X acquisitions over Mont-Blanc massif glaciers (2008-2020). The dataset includes dual-polarization (HH+HV) time series with labeled glacier surface classes and integrated dataloader for deep learning applications.
+Machine learning-ready cryospheric SAR dataset from PAZ acquisitions over Mont-Blanc massif glaciers (2020). The dataset includes dual-polarization (HH+HV) time series with labeled glacier surface classes and integrated dataloader for deep learning applications.
 
 ## 1. Structure
 
 ```
-dataset_PAZ_TSX/
+dataset_PAZ/
 ├── DATASET/
-│   ├── PAZTSX_CRYO_ML.hdf5          # Optimized HDF5 dataset for ML
-│   └── PAZTSX_CRYO_structure.json   # Dataset structure metadata
+│   ├── PAZ_CRYO_ML.hdf5          # Optimized HDF5 dataset for ML
+│   └── PAZ_CRYO_structure.json   # Dataset structure metadata
 ├── script/
 │   ├── load_dataset.py              # MLDatasetLoader class
 │   ├── scenarios.py                 # 4 pre-configured ML scenarios
@@ -34,8 +34,8 @@ dataset_PAZ_TSX/
 
 ```bash
 # Clone repository
-git clone https://github.com/Matthieu-Gallet/dataset_PAZ_TSX.git
-cd dataset_PAZ_TSX
+git clone https://github.com/Matthieu-Gallet/dataset_PAZ.git
+cd dataset_PAZ
 
 # Create virtual environment
 python -m venv venv_dataset_paz
@@ -46,14 +46,14 @@ pip install numpy h5py rasterio pandas tqdm scikit-learn joblib
 ```
 
 ### Generate HDF5 Dataset
-This step is required only if you want to recreate the dataset from original files (tiff), otherwise you can directly use the `PAZTSX_CRYO_ML.hdf5` file.
+This step is required only if you want to recreate the dataset from original files (tiff), otherwise you can directly use the `PAZ_CRYO_ML.hdf5` file.
 
 ```bash
 cd script/data_processing
 python 2_create_HDF5_dataset.py
 ```
 
-Output: `DATASET/PAZTSX_CRYO_ML.hdf5` (optimized for ML with chunking, compression, and pre-computed statistics)
+Output: `DATASET/PAZ_CRYO_ML.hdf5` (optimized for ML with chunking, compression, and pre-computed statistics)
 
 ## 3. Dataset Description
 
@@ -83,9 +83,9 @@ The dataset covers 70 labeled areas across 9 land surface classes in the Mont-Bl
 
 ### Data Characteristics
 
-- **Satellites:** PAZ, TerraSAR-X, TanDEM-X
+- **Satellites:** PAZ
 - **Polarization:** Dual-pol (HH + HV)
-- **Temporal coverage:** 2008-2020
+- **Temporal coverage:** 2020
 - **Resolution:** ~3m (ground range)
 - **Orbit:** Ascending (ASC) and Descending (DSC)
 - **Total acquisitions:** 216 SAR images across 54 groups
@@ -94,7 +94,7 @@ The dataset covers 70 labeled areas across 9 land surface classes in the Mont-Bl
 ### HDF5 Structure
 
 ```
-PAZTSX_CRYO_ML.hdf5
+PAZ_CRYO_ML.hdf5
 ├── data/
 │   ├── {group_name}/          # e.g., ABL001, ACC002
 │   │   ├── ASC/               # Ascending orbit
@@ -126,7 +126,7 @@ PAZTSX_CRYO_ML.hdf5
 from load_dataset import MLDatasetLoader
 
 # Initialize loader
-loader = MLDatasetLoader('DATASET/PAZTSX_CRYO_ML.hdf5')
+loader = MLDatasetLoader('DATASET/PAZ_CRYO_ML.hdf5')
 
 # Load single group data
 data = loader.load_data(
@@ -237,9 +237,9 @@ data = scenario_3_domain_adaptation_pol(
 # - y: (N,) labels
 ```
 
-#### Scenario 4: Cross-Sensor Domain Adaptation
+#### Scenario 4: Cross-Geometry Domain Adaptation
 
-PAZ 2020 → TerraSAR-X 2008 temporal domain adaptation. Tests sensor and temporal transferability.
+PAZ different acquisition geometries domain adaptation. Tests geometry invariance between different orbits and dates.
 
 ```python
 from scenarios import scenario_4_domain_adaptation_satellite
@@ -247,15 +247,20 @@ from scenarios import scenario_4_domain_adaptation_satellite
 data = scenario_4_domain_adaptation_satellite(
     loader=loader,
     window_size=32,
-    source_date='20200804',      # PAZ acquisition
-    target_date='20080805',      # TSX acquisition
-    orbit='DSC'
+    source_orbit='DSC',           # Source orbit
+    target_orbit='ASC',           # Target orbit
+    source_date='20210127',       # Source acquisition date
+    target_date='20210214',       # Target acquisition date
+    source_polarization='HH',     # Source polarization
+    target_polarization='HH',     # Target polarization
+    scale_type='amplitude'
 )
 
 # Returns:
-# - X_source: (N_source, window_size, window_size, 2) - PAZ dual-pol
-# - X_target: (N_target, window_size, window_size, 2) - TSX dual-pol
-# - y_source: (N_source,) labels for PAZ (labeled)
+# - X_source: (N_source, window_size, window_size, n_pol) - Source geometry
+# - X_target: (N_target, window_size, window_size, n_pol) - Target geometry
+# - y_source: (N_source,) labels for source (labeled)
+# - y_target: (N_target,) labels for target (for analysis only)
 # - groups_source, groups_target
 ```
 
