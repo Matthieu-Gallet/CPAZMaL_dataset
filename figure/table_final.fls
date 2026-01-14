@@ -145,6 +145,8 @@ INPUT /usr/share/texlive/texmf-dist/tex/latex/base/textcomp.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/mweights/mweights.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/fontaxes/fontaxes.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/fontaxes/fontaxes.sty
+INPUT /usr/share/texlive/texmf-dist/tex/latex/float/float.sty
+INPUT /usr/share/texlive/texmf-dist/tex/latex/float/float.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/fira/T1FiraSans-OsF.fd
 INPUT /usr/share/texlive/texmf-dist/tex/latex/fira/T1FiraSans-OsF.fd
 INPUT /usr/share/texlive/texmf-dist/tex/latex/fira/T1FiraSans-OsF.fd
@@ -167,11 +169,6 @@ INPUT detailed_study_areas_table.tex
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Bold-osf-t1.tfm
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Italic-osf-t1.tfm
-INPUT /usr/share/texlive/texmf-dist/tex/latex/fira/TS1FiraSans-OsF.fd
-INPUT /usr/share/texlive/texmf-dist/tex/latex/fira/TS1FiraSans-OsF.fd
-INPUT /usr/share/texlive/texmf-dist/tex/latex/fira/TS1FiraSans-OsF.fd
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Bold-osf-ts1.tfm
 OUTPUT table_final.pdf
 INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/fira/FiraSans-Regular-osf-t1.vf
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Regular-osf-t1--base.tfm
@@ -179,13 +176,9 @@ INPUT /var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map
 INPUT /usr/share/texlive/texmf-dist/fonts/enc/dvips/fira/fir_iln36p.enc
 INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/fira/FiraSans-Bold-osf-t1.vf
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Bold-osf-t1--base.tfm
-INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/fira/FiraSans-Bold-osf-ts1.vf
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Bold-osf-ts1--base.tfm
-INPUT /usr/share/texlive/texmf-dist/fonts/enc/dvips/fira/fir_d67aat.enc
-INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/fira/FiraSans-Italic-osf-t1.vf
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/fira/FiraSans-Italic-osf-t1--base.tfm
 INPUT table_final.aux
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Bold.pfb
-INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Italic.pfb
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Regular.pfb
+INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb
+INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
 INPUT /usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb

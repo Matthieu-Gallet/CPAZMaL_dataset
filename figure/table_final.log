@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.9.25)  3 NOV 2025 19:40
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2025.9.25)  22 DEC 2025 20:31
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -407,32 +407,39 @@ LaTeX Info: Redefining \ulcshape on input line 41.
 LaTeX Info: Redefining \textsw on input line 47.
 LaTeX Info: Redefining \textssc on input line 48.
 LaTeX Info: Redefining \textulc on input line 49.
-))
-LaTeX Font Info:    Trying to load font information for T1+FiraSans-OsF on input line 13.
+)) (/usr/share/texlive/texmf-dist/tex/latex/float/float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count322
+\float@exts=\toks39
+\float@box=\box63
+\@float@everytoks=\toks40
+\@floatcapt=\box64
+)
+LaTeX Font Info:    Trying to load font information for T1+FiraSans-OsF on input line 14.
  (/usr/share/texlive/texmf-dist/tex/latex/fira/T1FiraSans-OsF.fd
 File: T1FiraSans-OsF.fd 2019/10/10 (autoinst) Font definitions for T1/FiraSans-OsF.
 )
 LaTeX Font Info:    Font shape `T1/FiraSans-OsF/m/n' in size <10> not available
-(Font)              Font shape `T1/FiraSans-OsF/regular/n' tried instead on input line 13.
+(Font)              Font shape `T1/FiraSans-OsF/regular/n' tried instead on input line 14.
 LaTeX Font Info:    Font shape `T1/FiraSans-OsF/regular/n' will be
-(Font)              scaled to size 10.0pt on input line 13.
+(Font)              scaled to size 10.0pt on input line 14.
  (./table_final.aux)
 \openout1 = `table_final.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 14.
+LaTeX Font Info:    ... okay on input line 14.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -470,17 +477,17 @@ LaTeX Font Info:    ... okay on input line 13.
 
 (/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count322
+\scratchcounter=\count323
 \scratchdimen=\dimen305
-\scratchbox=\box63
-\nofMPsegments=\count323
-\nofMParguments=\count324
-\everyMPshowfont=\toks39
-\MPscratchCnt=\count325
+\scratchbox=\box65
+\nofMPsegments=\count324
+\nofMParguments=\count325
+\everyMPshowfont=\toks41
+\MPscratchCnt=\count326
 \MPscratchDim=\dimen306
-\MPnumerator=\count326
-\makeMPintoPDFobject=\count327
-\everyMPtoPDFconversion=\toks40
+\MPnumerator=\count327
+\makeMPintoPDFobject=\count328
+\everyMPtoPDFconversion=\toks42
 ) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
@@ -490,14 +497,14 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 \c__nicematrix_shift_Ldots_last_row_dim=\dimen307
 \c__nicematrix_shift_exterior_Vdots_dim=\dimen308
 \c__nicematrix_innersep_middle_dim=\dimen309
-\c@mv@tabular=\count328
-\c@mv@boldtabular=\count329
+\c@mv@tabular=\count329
+\c@mv@boldtabular=\count330
  (./detailed_study_areas_table.tex
 \g__nicematrix_max_cell_width_dim=\dimen310
-\c@iRow=\count330
-\c@jCol=\count331
-\l__nicematrix_cell_box=\box64
-\l__nicematrix_the_array_box=\box65
+\c@iRow=\count331
+\c@jCol=\count332
+\l__nicematrix_cell_box=\box66
+\l__nicematrix_the_array_box=\box67
 \l__nicematrix_left_delim_dim=\dimen311
 \l__nicematrix_right_delim_dim=\dimen312
 \g__nicematrix_dp_row_zero_dim=\dimen313
@@ -507,56 +514,43 @@ File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 \g__nicematrix_ht_last_row_dim=\dimen317
 \g__nicematrix_dp_last_row_dim=\dimen318
 LaTeX Font Info:    Font shape `T1/FiraSans-OsF/b/n' in size <10> not available
-(Font)              Font shape `T1/FiraSans-OsF/bold/n' tried instead on input line 86.
+(Font)              Font shape `T1/FiraSans-OsF/bold/n' tried instead on input line 85.
 LaTeX Font Info:    Font shape `T1/FiraSans-OsF/bold/n' will be
-(Font)              scaled to size 10.0pt on input line 86.
-\g__nicematrix_block_box_1_box=\box66
-\g__nicematrix_block_box_2_box=\box67
-\g__nicematrix_block_box_3_box=\box68
-LaTeX Font Info:    Font shape `T1/FiraSans-OsF/m/it' in size <10> not available
-(Font)              Font shape `T1/FiraSans-OsF/regular/it' tried instead on input line 86.
-LaTeX Font Info:    Font shape `T1/FiraSans-OsF/regular/it' will be
-(Font)              scaled to size 10.0pt on input line 86.
-\g__nicematrix_block_box_4_box=\box69
-\g__nicematrix_block_box_5_box=\box70
-\g__nicematrix_block_box_6_box=\box71
-LaTeX Font Info:    Trying to load font information for TS1+FiraSans-OsF on input line 86.
- (/usr/share/texlive/texmf-dist/tex/latex/fira/TS1FiraSans-OsF.fd
-File: TS1FiraSans-OsF.fd 2019/10/10 (autoinst) Font definitions for TS1/FiraSans-OsF.
-)
-LaTeX Font Info:    Font shape `TS1/FiraSans-OsF/b/n' in size <10> not available
-(Font)              Font shape `TS1/FiraSans-OsF/bold/n' tried instead on input line 86.
-LaTeX Font Info:    Font shape `TS1/FiraSans-OsF/bold/n' will be
-(Font)              scaled to size 10.0pt on input line 86.
-\g__nicematrix_ddots_int=\count332
-\g__nicematrix_iddots_int=\count333
+(Font)              scaled to size 10.0pt on input line 85.
+\g__nicematrix_ddots_int=\count333
+\g__nicematrix_iddots_int=\count334
 \g__nicematrix_delta_x_one_dim=\dimen319
 \g__nicematrix_delta_y_one_dim=\dimen320
 \g__nicematrix_delta_x_two_dim=\dimen321
 \g__nicematrix_delta_y_two_dim=\dimen322
-\l__nicematrix_initial_i_int=\count334
-\l__nicematrix_initial_j_int=\count335
-\l__nicematrix_final_i_int=\count336
-\l__nicematrix_final_j_int=\count337
-) [1{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/fira/fir_iln36p.enc}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/fira/fir_d67aat.enc}] (./table_final.aux)
+\l__nicematrix_initial_i_int=\count335
+\l__nicematrix_initial_j_int=\count336
+\l__nicematrix_final_i_int=\count337
+\l__nicematrix_final_j_int=\count338
+) [1
+
+]
+Overfull \vbox (21.97925pt too high) has occurred while \output is active []
+
+ [2{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}{/usr/share/texlive/texmf-dist/fonts/enc/dvips/fira/fir_iln36p.enc}] (./table_final.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-22>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 26658 strings out of 474222
- 563659 string characters out of 5748733
- 2598975 words of memory out of 5000000
- 48699 multiletter control sequences out of 15000+600000
- 604546 words of font info for 47 fonts, out of 8000000 for 9000
+ 23012 strings out of 474222
+ 485743 string characters out of 5748733
+ 2398975 words of memory out of 5000000
+ 45057 multiletter control sequences out of 15000+600000
+ 589109 words of font info for 43 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 87i,17n,93p,500b,1584s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Bold.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Italic.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Regular.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
-Output written on table_final.pdf (1 page, 164225 bytes).
+ 87i,14n,93p,500b,1146s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Bold.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/fira/FiraSans-Regular.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
+Output written on table_final.pdf (2 pages, 151622 bytes).
 PDF statistics:
- 36 PDF objects out of 1000 (max. 8388607)
- 23 compressed objects within 1 object stream
+ 40 PDF objects out of 1000 (max. 8388607)
+ 25 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  13 words of extra memory for PDF output out of 10000 (max. 10000000)
 

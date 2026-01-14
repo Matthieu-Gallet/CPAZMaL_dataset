@@ -15,7 +15,7 @@ def create_latex_table_from_csv():
     df = pd.read_csv("../../ORIGINAL_DATA/metadata/shapefile_statistics.csv")
     
     # Extraire les statistiques HDF5
-    h5_file = "../../DATASET/dataset/PAZTSX_CRYO_ML.hdf5"
+    h5_file = "../../DATASET/dataset/CPAZMaL.hdf5"
     group_stats = {}
     class_stats = {}
     
@@ -242,11 +242,10 @@ def create_latex_table_from_csv():
 \caption{Detail of the individual study areas with spatial, temporal and topographic parameters}
 \label{tab:detailed_study_areas}
 \resizebox{\textwidth}{!}{%
-\begin{NiceTabular}{llccccccccccccccccc}
+\begin{NiceTabular}{llccccccccccc}
 \toprule
-\textbf{ID} & \textbf{Class} & \textbf{Group} & \textbf{Size} & \textbf{Valid} & \Block{1-5}{\textbf{Ascending (n. acq.)}} & & & & & \Block{1-5}{\textbf{Descending (n. acq.)}} & & & & & \textbf{Alt} & \textbf{Slope} & \textbf{Asp} & \textbf{Lat/Lon} \\
-& & & \textbf{(H$\times$W)} & \textbf{(\%)} & \Block{1-2}{\textit{Polarization}} & & \Block{1-3}{\textit{Satellites}} & & & \Block{1-2}{\textit{Polarization}} & & \Block{1-3}{\textit{Satellites}} & & & \textbf{(m)} & \textbf{(°)} & \textbf{(°)} & \\
-& & & & & \text{HH} & \text{HV} & \text{PAZ} & \text{TSX} & \text{TDX} & \text{HH} & \text{HV} & \text{PAZ} & \text{TSX} & \text{TDX} & & & & \\
+\textbf{ID} & \textbf{Class} & \textbf{Group} & \textbf{Size} & \textbf{Valid} & \textbf{Asc. HH} & \textbf{Asc. HV} & \textbf{Dsc. HH} & \textbf{Dsc. HV} & \textbf{Alt} & \textbf{Slope} & \textbf{Asp} & \textbf{Lat/Lon} \\
+& & & \textbf{(H$\times$W)} & \textbf{(\%)} & \textbf{(n. acq.)} & \textbf{(n. acq.)} & \textbf{(n. acq.)} & \textbf{(n. acq.)} & \textbf{(m)} & \textbf{} & \textbf{} & \\
 \midrule
 """
     
@@ -297,14 +296,12 @@ def create_latex_table_from_csv():
             tsx_dsc = 0
             tdx_dsc = 0
         
-        detailed_table += f"{row['id']} & {row['classe']} & {row['group']} & "
-        detailed_table += f"${size_h} \\times {size_w}$ & {valid:.1f} & "
+        detailed_table += f"{row['id']} & {row['classe']} & {row['group'].replace('_', '\\_')} & "
+        detailed_table += f"${size_h} \\times {size_w}$ & ${valid:.1f}$ & "
         detailed_table += f"{n_asc_hh} & {n_asc_hv} & "
-        detailed_table += f"{paz_asc} & {tsx_asc} & {tdx_asc} & "
         detailed_table += f"{n_dsc_hh} & {n_dsc_hv} & "
-        detailed_table += f"{paz_dsc} & {tsx_dsc} & {tdx_dsc} & "
-        detailed_table += f"{row['altitude']:.0f} & {row['pente']:.1f} & {row['exposition']:.0f} & "
-        detailed_table += f"{row['latitude']:.2f}/{row['longitude']:.2f} \\\\\n"
+        detailed_table += f"${row['altitude']:.0f}$ & ${row['pente']:.1f}$ & ${row['exposition']:.0f}$ & "
+        detailed_table += f"${row['latitude']:.2f}/{row['longitude']:.2f}$ \\\\\n"
     
     detailed_table += r"""
 \bottomrule
