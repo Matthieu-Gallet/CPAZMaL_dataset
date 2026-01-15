@@ -32,7 +32,7 @@ def create_enhanced_acquisition_figure():
     """Crée une figure d'acquisition améliorée avec deux subplots verticaux"""
     
     # Lire et préparer les données
-    df = pd.read_csv("data.csv")
+    df = pd.read_csv("../../ORIGINAL_DATA/metadata/data.csv")
     df['Date'] = pd.to_datetime(df['Date'])
     df['Incidence_Angle'] = df['Angle Incidence'].str.replace('°', '').astype(float)
     
@@ -46,18 +46,13 @@ def create_enhanced_acquisition_figure():
     df['Pol_Type'] = df['Polarisations'].apply(classify_polarization)
     
     # Filtrer les données par période
-    # Période 1: TerraSAR-X/TanDEM-X (octobre 2007 - décembre 2013)
-    period1_start = datetime(2007, 9, 1)
-    period1_end = datetime(2013, 12, 31)
-    df_period1 = df[(df['Date'] >= period1_start) & (df['Date'] <= period1_end)]
-    
     # Période 2: PAZ (novembre 2019 - février 2023)
     period2_start = datetime(2019, 11, 1)
     period2_end = datetime(2023, 2, 28)
     df_period2 = df[(df['Date'] >= period2_start) & (df['Date'] <= period2_end)]
     
-    # Créer la figure avec deux subplots verticaux
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), sharex=False)
+    # Créer la figure avec un subplot
+    fig, ax = plt.subplots(1, 1, figsize=(6, 3))
     
     # Définir les couleurs et symboles
     colors = {'Single-pol': 'tab:blue', 'Dual/Quad-pol': 'tab:orange'}
@@ -92,15 +87,9 @@ def create_enhanced_acquisition_figure():
         ax.xaxis.set_major_locator(years)
         ax.xaxis.set_major_formatter(years_fmt)
     
-    # Ploter période 1: TerraSAR-X/TanDEM-X (2007-2013)
-    plot_period_data(ax1, df_period1, 
-                    'TerraSAR-X/TanDEM-X Era (2007-2013)', 
-                    (36, 46), 
-                    (period1_start, period1_end))
-    
     # Ploter période 2: PAZ (nov 2019 - fév 2023) 
-    plot_period_data(ax2, df_period2, 
-                    'PAZ Era (Nov 2019 - Feb 2023)', 
+    plot_period_data(ax, df_period2, 
+                    'PAZ (Nov 2019 - Feb 2023)', 
                     (35, 55.5), 
                     (period2_start, period2_end))
     
@@ -126,14 +115,14 @@ def create_enhanced_acquisition_figure():
                                  markerfacecolor='tab:orange', markersize=14,
                                  label='Dual-pol', markeredgecolor='black'))
     
-    # Ajouter la légende horizontale sous les subplots
+    # Ajouter la légende horizontale sous le subplot
     fig.legend(handles=legend_elements, loc='lower center', 
-               bbox_to_anchor=(0.5, -0.05), ncol=4, frameon=False, 
+               bbox_to_anchor=(0.5, -0.075), ncol=4, frameon=False, 
                fancybox=False, shadow=False)
     
     # Ajuster la mise en page
     plt.tight_layout()
-    plt.subplots_adjust(bottom=0.075)  # Laisser de l'espace pour la légende
+    plt.subplots_adjust(bottom=0.2)  # Laisser de l'espace pour la légende
     
     # Sauvegarder
     os.makedirs("figure", exist_ok=True)
@@ -147,13 +136,6 @@ def create_enhanced_acquisition_figure():
     print(f"Total acquisitions: {len(df)}")
     print(f"Time span: {df['Date'].min().strftime('%Y-%m-%d')} to {df['Date'].max().strftime('%Y-%m-%d')}")
     print(f"Duration: {(df['Date'].max() - df['Date'].min()).days} days")
-    
-    print("\\n=== PERIOD 1 (TerraSAR-X/TanDEM-X Era): Oct 2007 - Dec 2013 ===")
-    print(f"Period 1 acquisitions: {len(df_period1)}")
-    for satellite in df_period1['Satellite'].unique():
-        sat_data = df_period1[df_period1['Satellite'] == satellite]
-        print(f"  {satellite}: {len(sat_data)} acquisitions ({len(sat_data)/len(df_period1)*100:.1f}%)")
-        print(f"    Incidence range: {sat_data['Incidence_Angle'].min():.1f}° to {sat_data['Incidence_Angle'].max():.1f}°")
     
     print("\\n=== PERIOD 2 (PAZ Era): Nov 2019 - Feb 2023 ===")
     print(f"Period 2 acquisitions: {len(df_period2)}")

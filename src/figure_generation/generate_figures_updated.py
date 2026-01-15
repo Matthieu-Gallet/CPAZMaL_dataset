@@ -196,12 +196,13 @@ def plot_hist_updated(h5_file, polarization='HH', save=True):
                 data_by_period[class_name][period_name] = None
     
     # Créer la figure
-    l = 1.35
+    l = 1.45
     fig, ax = plt.subplots(2, 4, figsize=(17 / l, 6 / l), sharex=True, sharey=True)
     
     colors = ['tab:blue', 'tab:green', 'tab:orange']
     period_names = ['jan_2020', 'apr_2020', 'aug_2020']
-    period_labels = ['January', 'April', 'August']
+    # period_labels = ['January', 'April', 'August']
+    period_labels = ['Jan.-Mar.', 'Apr.-Jun.', 'Jul.-Sep.']
     
     # Limites selon polarisation
     ylim_max = 0.22 if polarization == 'HH' else 0.29
@@ -232,22 +233,34 @@ def plot_hist_updated(h5_file, polarization='HH', save=True):
                         linewidth=0.2,
                         color=color,
                     )
-        
+    
         ax[row, col].set_title(class_name, fontsize=14, fontweight="bold")
         
-        if col == 0:
-            # if row == 1:
-            ax[row, col].set_ylabel("Density", fontsize=14)
+        # Remove individual ylabel
+        # if col == 0:
+        #     # if row == 1:
+        #     ax[row, col].set_ylabel("Density", fontsize=14)
+        # Remove individual xlabel
+        # if row == 1 and col == 2:
+        #     ax[row, col].set_xlabel("Backscatter Amplitude", fontsize=14, labelpad=-5)
         ax[row, col].set_xlim(0, xlim_max)
         ax[row, col].set_ylim(0, ylim_max)
         ax[row, col].grid(True, alpha=0.3, linestyle='-')
+    
+    # Add centered ylabel
+    fig.text(0.075, 0.5, 'Density', fontsize=14, fontweight='bold', 
+             ha='center', va='center', rotation='vertical')
+    
+    # Add centered xlabel between column 1 and 2
+    fig.text(0.5, 0.02, 'Backscatter Amplitude', fontsize=14, fontweight='bold', 
+             ha='center', va='center')
     
     # Légende globale sous les graphes
     from matplotlib.patches import Patch
     legend_handles = [Patch(facecolor=color, edgecolor='black', label=label, alpha=0.7)
                      for color, label in zip(colors, period_labels)]
     fig.legend(handles=legend_handles, loc='lower center', ncol=3, frameon=True,
-               fancybox=True, shadow=False, bbox_to_anchor=(0.5, -0.075), prop={'weight': 'bold', 'size': 18})
+               fancybox=True, shadow=False, bbox_to_anchor=(0.5, -0.15), prop={'weight': 'bold', 'size': 18})
 
     # # Supprimer le 8ème subplot (inutile maintenant)
     # ax[1, 3].axis('off')
@@ -441,8 +454,8 @@ def create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=Tru
     # 4 groupes
     groups = {
         'ACC': 'ACC002',
+        'ABL': 'ABL001',
         'ICA': 'ICA004',
-        'FOR': 'FOR002',
         'ROC': 'ROC001'
     }
     
@@ -546,7 +559,7 @@ def create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=Tru
         Line2D([0], [0], color='tab:orange', marker='+', linestyle='-', linewidth=1, markersize=6, markeredgewidth=1.5, label='ASC')
     ]
     fig.legend(handles=legend_handles, loc='lower center', ncol=2, fontsize=12,
-               frameon=True, fancybox=True, shadow=False, bbox_to_anchor=(0.5, -0.015), prop={'weight': 'bold', 'size': 14})
+               frameon=True, fancybox=True, shadow=False, bbox_to_anchor=(0.5, -0.05), prop={'weight': 'bold', 'size': 14})
 
     # Ajuster espacement
     plt.subplots_adjust(hspace=0.05, wspace=0.1, bottom=0.2, top=0.9, left=0.06, right=0.98)
@@ -1045,7 +1058,7 @@ def plot_sar_images_updated(h5_file, save=True):
 
 if __name__ == "__main__":
     # Nouveau dataset HDF5
-    h5_file = "../DATASET/dataset/PAZTSX_CRYO_ML.hdf5"
+    h5_file = "../../DATASET/dataset_original/PAZTSX_CRYO_ML.hdf5"
     
     print("="*60)
     print("GENERATION DES FIGURES AVEC NOUVEAU DATASET")
@@ -1063,12 +1076,12 @@ if __name__ == "__main__":
     
     # Générer toutes les figures
     
-    # Figure 1: Histogrammes (3 périodes, DSC uniquement)
-    print("\n" + "="*60)
-    print("FIGURE 1: HISTOGRAMMES")
-    print("="*60)
-    plot_hist_updated(h5_file, polarization='HH', save=True)
-    plot_hist_updated(h5_file, polarization='HV', save=True)
+    # # Figure 1: Histogrammes (3 périodes, DSC uniquement)
+    # print("\n" + "="*60)
+    # print("FIGURE 1: HISTOGRAMMES")
+    # print("="*60)
+    # plot_hist_updated(h5_file, polarization='HH', save=True)
+    # plot_hist_updated(h5_file, polarization='HV', save=True)
     
     # # Figure 2: Plots temporels simples (DSC uniquement)
     # print("\n" + "="*60)
@@ -1077,12 +1090,12 @@ if __name__ == "__main__":
     # create_temporal_plot_updated(h5_file, polarization='HH', save=True)
     # create_temporal_plot_updated(h5_file, polarization='HV', save=True)
     
-    # # Figure 3: Plots temporels dual-orbit (DSC + ASC)
-    # print("\n" + "="*60)
-    # print("FIGURE 3: PLOTS TEMPORELS DUAL-ORBIT")
-    # print("="*60)
-    # create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=True)
-    # create_temporal_plot_dual_orbit_updated(h5_file, polarization='HV', save=True)
+    # Figure 3: Plots temporels dual-orbit (DSC + ASC)
+    print("\n" + "="*60)
+    print("FIGURE 3: PLOTS TEMPORELS DUAL-ORBIT")
+    print("="*60)
+    create_temporal_plot_dual_orbit_updated(h5_file, polarization='HH', save=True)
+    create_temporal_plot_dual_orbit_updated(h5_file, polarization='HV', save=True)
     
     # # Figure 4: Images SAR moyennes estivales
     # print("\n" + "="*60)

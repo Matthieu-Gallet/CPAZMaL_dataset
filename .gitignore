@@ -5,3 +5,8 @@ ORIGINAL_DATA_noTSX/*
 __pycache__/
 script/__pycache__/*
 dev/*
+QGIS/*
+src/figure_generation/figure/*
+QGIS/*
+QGIS/MAPS.qgz
+QGIS/grsl_paz.pdf
